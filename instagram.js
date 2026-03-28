@@ -2,12 +2,12 @@ require('dotenv').config()
 const axios = require('axios')
 const { gerarESubirImagem } = require('./gerarImagem')
 
-const INSTAGRAM_ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN
-const INSTAGRAM_ACCOUNT_ID = process.env.INSTAGRAM_ACCOUNT_ID
+const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
+const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 
 function gerarCaption(apostasOntem, resultados) {
   const hoje = new Date().toLocaleDateString('pt-BR')
-  
+
   if (!apostasOntem || !apostasOntem.length) {
     return `⚽ RESULTADO DE ONTEM — ${hoje}
 
@@ -50,56 +50,41 @@ ${linhasResultados}━━━━━━━━━━━━━━━
 📊 Aproveitamento: ${acertos}/${total} certas (${taxa}%)
 
 Quer receber essas analises ANTES dos jogos?
-Nossos assinantes ja sabiam desde as 8h da manha 👇
+Nossos assinantes ja sabiam desde as 8h 👇
 Link na bio
 
 #apostas #futebol #valuebets #apostasesportivas #brasileirao #championsleague #gollucrativo #tipster #resultados #greens`
 }
 
-async function publicarNoInstagram(caption, imageUrl) {
+async function publicarViaZernio(caption, imageUrl) {
   try {
-    console.log('Publicando resultado no Instagram...')
+    console.log('Publicando no Instagram via Zernio...')
 
-    const containerRes = await axios.post(
-      'https://graph.instagram.com/v21.0/' + INSTAGRAM_ACCOUNT_ID + '/media',
-      {
-        image_url: imageUrl,
-        caption: caption,
-        access_token: INSTAGRAM_ACCESS_TOKEN
+    const res = await axios.post('https://zernio.com/api/v1/posts', {
+      platforms: [{ platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }],
+      content: caption,
+      mediaItems: [{ type: 'image', url: imageUrl }]
+    }, {
+      headers: {
+        'Authorization': 'Bearer ' + ZERNIO_API_KEY,
+        'Content-Type': 'application/json'
       }
-    )
+    })
 
-    const containerId = containerRes.data.id
-    console.log('Container criado:', containerId)
-
-    await new Promise(function(resolve) { setTimeout(resolve, 5000) })
-
-    const publishRes = await axios.post(
-      'https://graph.instagram.com/v21.0/' + INSTAGRAM_ACCOUNT_ID + '/media_publish',
-      {
-        creation_id: containerId,
-        access_token: INSTAGRAM_ACCESS_TOKEN
-      }
-    )
-
-    console.log('Publicado no Instagram! ID:', publishRes.data.id)
+    console.log('Publicado com sucesso via Zernio! ID:', res.data.id)
     return true
 
   } catch (err) {
-    console.error('Erro ao publicar no Instagram:', err.response?.data || err.message)
+    console.error('Erro ao publicar via Zernio:', err.response?.data || err.message)
     return false
   }
 }
 
 async function postarInstagram(apostasOntem, resultados, turno) {
-  // Instagram só posta na manha — mostra resultado de ontem
-  if (turno !== 'manha') {
-    console.log('Instagram: so posta de manha com resultado de ontem.')
-    return
-  }
+  if (turno !== 'manha') return
 
-  if (!INSTAGRAM_ACCESS_TOKEN || !INSTAGRAM_ACCOUNT_ID) {
-    console.log('Credenciais do Instagram nao configuradas.')
+  if (!ZERNIO_API_KEY || !ZERNIO_ACCOUNT_ID) {
+    console.log('Credenciais do Zernio nao configuradas.')
     return
   }
 
@@ -113,7 +98,7 @@ async function postarInstagram(apostasOntem, resultados, turno) {
     }
 
     const caption = gerarCaption(apostasOntem, resultados || [])
-    await publicarNoInstagram(caption, imageUrl)
+    await publicarViaZernio(caption, imageUrl)
 
   } catch (err) {
     console.error('Erro no modulo Instagram:', err.message)
