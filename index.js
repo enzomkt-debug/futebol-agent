@@ -580,11 +580,31 @@ async function runAgent(turno) {
   console.log('[' + new Date().toISOString() + '] Agente finalizado')
 }
 
+const { postarContextoJogo } = require('./postContexto')
+
+async function runContexto() {
+  console.log('\n[' + new Date().toISOString() + '] Post de contexto iniciado')
+  try {
+    const jogos = await buscarJogosProximosDias()
+    if (!jogos.length) {
+      console.log('Nenhum jogo para post de contexto.')
+      return
+    }
+    // Pega o jogo mais importante do dia (maior prioridade)
+    const jogoDestaque = jogos[0]
+    await postarContextoJogo(jogoDestaque)
+  } catch (err) {
+    console.error('Erro no post de contexto:', err.message)
+  }
+  console.log('[' + new Date().toISOString() + '] Post de contexto finalizado')
+}
+
 cron.schedule('0 8 * * *',  function() { runAgent('manha') }, { timezone: 'America/Sao_Paulo' })
+cron.schedule('0 12 * * *', function() { runContexto() },     { timezone: 'America/Sao_Paulo' })
 cron.schedule('0 13 * * *', function() { runAgent('tarde') }, { timezone: 'America/Sao_Paulo' })
 cron.schedule('0 19 * * *', function() { runAgent('noite') }, { timezone: 'America/Sao_Paulo' })
 
-console.log('Agente agendado: 8h, 13h e 19h (horario de Brasilia)')
+console.log('Agente agendado: 8h, 12h, 13h e 19h (horario de Brasilia)')
 console.log('Executando turno da manha para teste...\n')
 
 runAgent('manha')
