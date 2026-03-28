@@ -1,94 +1,70 @@
 require('dotenv').config()
 const axios = require('axios')
-const fs = require('fs')
+const { gerarESubirImagem } = require('./gerarImagem')
 
 const INSTAGRAM_ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN
 const INSTAGRAM_ACCOUNT_ID = process.env.INSTAGRAM_ACCOUNT_ID
 
-// ─── GERA TEXTO DO POST ───
-
-function gerarPostManha(apostas, resultadoOntem) {
+function gerarCaption(apostasOntem, resultados) {
   const hoje = new Date().toLocaleDateString('pt-BR')
-  const destaque = apostas[0]
+  
+  if (!apostasOntem || !apostasOntem.length) {
+    return `⚽ RESULTADO DE ONTEM — ${hoje}
 
-  const linhasApostas = apostas.map(function(a, i) {
-    return (i + 1) + '. ' + a.jogo + '\n' + a.mercado + ' | Odd ' + a.odd.toFixed(2)
-  }).join('\n\n')
-
-  return `⚽ ANÁLISE DO DIA — ${hoje}
-
-📌 RESULTADO DE ONTEM
-${resultadoOntem}
+Primeiro dia de operacao! Acompanhe nossas analises.
 
 ━━━━━━━━━━━━━━━
-🔥 APOSTA DESTAQUE
-
-${destaque.jogo}
-${destaque.mercado} | Odd ${destaque.odd.toFixed(2)}
-
-━━━━━━━━━━━━━━━
-📋 APOSTAS DE HOJE
-
-${linhasApostas}
-
-━━━━━━━━━━━━━━━
-⚠️ Aposte com responsabilidade.
-
-🔗 Receba as análises ANTES do jogo:
+🔗 Receba as analises ANTES do jogo:
 Link na bio 👆
 
-#apostas #futebol #valuebets #apostasesportivas #brasileirao #championsleague #libertadores #betbrasil #gollucrativo`
-}
+#apostas #futebol #valuebets #brasileirao #gollucrativo`
+  }
 
-function gerarPostTarde(apostas) {
-  const linhasApostas = apostas.map(function(a, i) {
-    return (i + 1) + '. ' + a.jogo + ' (' + a.liga + ')\n' + a.mercado + ' | Odd ' + a.odd.toFixed(2)
-  }).join('\n\n')
+  let linhasResultados = ''
+  let acertos = 0
+  let total = 0
 
-  return `🕐 ATUALIZAÇÃO DA TARDE
+  apostasOntem.forEach(function(a, i) {
+    const res = resultados[i]
+    if (!res) return
+    total++
+    const totalGols = res.golsCasa + res.golsFora
+    const ambasMarcaram = res.golsCasa > 0 && res.golsFora > 0
+    let acertou = false
+    if (a.mercado === 'Mais de 2.5 gols') acertou = totalGols > 2
+    else if (a.mercado === 'Menos de 2.5 gols') acertou = totalGols < 3
+    else if (a.mercado === 'Ambas marcam: SIM') acertou = ambasMarcaram
+    if (acertou) acertos++
+    const placar = res.golsCasa + ' x ' + res.golsFora
+    const status = acertou ? '✅ VERDE' : '❌ VERMELHO'
+    linhasResultados += (i + 1) + '. ' + a.jogo + '\n'
+    linhasResultados += '   ' + a.mercado + ' | ' + placar + ' ' + status + '\n\n'
+  })
 
-Novas apostas identificadas para hoje:
+  const taxa = total > 0 ? Math.round((acertos / total) * 100) : 0
+  const emoji = taxa >= 60 ? '🔥' : taxa >= 40 ? '📊' : '📉'
 
-${linhasApostas}
+  return `${emoji} RESULTADO DE ONTEM — ${hoje}
 
-━━━━━━━━━━━━━━━
-Quer receber isso às 8h da manhã?
-👆 Link na bio — assine o GolLucrativo
+${linhasResultados}━━━━━━━━━━━━━━━
+📊 Aproveitamento: ${acertos}/${total} certas (${taxa}%)
 
-#apostas #futebol #valuebets #apostasesportivas #gollucrativo`
-}
-
-function gerarPostNoite(apostas) {
-  const linhasApostas = apostas.map(function(a, i) {
-    return (i + 1) + '. ' + a.jogo + ' (' + a.liga + ')\n' + a.mercado + ' | Odd ' + a.odd.toFixed(2)
-  }).join('\n\n')
-
-  return `🌙 APOSTAS DA NOITE
-
-Jogos com valor identificado agora:
-
-${linhasApostas}
-
-━━━━━━━━━━━━━━━
-Nossos assinantes já receberam isso às 8h.
-Não fique de fora amanhã 👇
+Quer receber essas analises ANTES dos jogos?
+Nossos assinantes ja sabiam desde as 8h da manha 👇
 Link na bio
 
-#apostas #futebol #valuebets #gollucrativo #apostasesportivas`
+#apostas #futebol #valuebets #apostasesportivas #brasileirao #championsleague #gollucrativo #tipster #resultados #greens`
 }
 
-// ─── PUBLICA NO INSTAGRAM ───
-
-async function publicarNoInstagram(texto, imageUrl) {
+async function publicarNoInstagram(caption, imageUrl) {
   try {
-    console.log('Publicando no Instagram...')
+    console.log('Publicando resultado no Instagram...')
 
-    // Passo 1: Criar container da mídia
     const containerRes = await axios.post(
       'https://graph.instagram.com/v21.0/' + INSTAGRAM_ACCOUNT_ID + '/media',
       {
         image_url: imageUrl,
-        caption: texto,
+        caption: caption,
         access_token: INSTAGRAM_ACCESS_TOKEN
       }
     )
@@ -96,10 +72,8 @@ async function publicarNoInstagram(texto, imageUrl) {
     const containerId = containerRes.data.id
     console.log('Container criado:', containerId)
 
-    // Aguarda 3 segundos para o container processar
-    await new Promise(function(resolve) { setTimeout(resolve, 3000) })
+    await new Promise(function(resolve) { setTimeout(resolve, 5000) })
 
-    // Passo 2: Publicar o container
     const publishRes = await axios.post(
       'https://graph.instagram.com/v21.0/' + INSTAGRAM_ACCOUNT_ID + '/media_publish',
       {
@@ -108,49 +82,42 @@ async function publicarNoInstagram(texto, imageUrl) {
       }
     )
 
-    console.log('Publicado com sucesso! ID:', publishRes.data.id)
-    return publishRes.data.id
+    console.log('Publicado no Instagram! ID:', publishRes.data.id)
+    return true
 
   } catch (err) {
     console.error('Erro ao publicar no Instagram:', err.response?.data || err.message)
-    return null
+    return false
   }
 }
 
-// ─── IMAGEM PADRÃO POR TURNO ───
-// Por enquanto usa imagens estáticas hospedadas no GitHub
-// Depois podemos gerar dinamicamente
+async function postarInstagram(apostasOntem, resultados, turno) {
+  // Instagram só posta na manha — mostra resultado de ontem
+  if (turno !== 'manha') {
+    console.log('Instagram: so posta de manha com resultado de ontem.')
+    return
+  }
 
-const IMAGENS = {
-  manha: 'https://raw.githubusercontent.com/enzomkt-debug/futebol-agent/main/assets/card-manha.png',
-  tarde: 'https://raw.githubusercontent.com/enzomkt-debug/futebol-agent/main/assets/card-tarde.png',
-  noite: 'https://raw.githubusercontent.com/enzomkt-debug/futebol-agent/main/assets/card-noite.png'
-}
-
-// ─── FUNÇÃO PRINCIPAL ───
-
-async function postarInstagram(apostas, resultadoOntem, turno) {
   if (!INSTAGRAM_ACCESS_TOKEN || !INSTAGRAM_ACCOUNT_ID) {
-    console.log('Credenciais do Instagram nao configuradas. Pulando postagem.')
+    console.log('Credenciais do Instagram nao configuradas.')
     return
   }
 
-  if (!apostas || !apostas.length) {
-    console.log('Sem apostas para postar no Instagram.')
-    return
-  }
+  try {
+    console.log('Gerando imagem de resultado para Instagram...')
+    const imageUrl = await gerarESubirImagem(apostasOntem || [], 'resultado', resultados || [])
 
-  let texto = ''
-  if (turno === 'manha') {
-    texto = gerarPostManha(apostas, resultadoOntem)
-  } else if (turno === 'tarde') {
-    texto = gerarPostTarde(apostas)
-  } else {
-    texto = gerarPostNoite(apostas)
-  }
+    if (!imageUrl) {
+      console.log('Nao foi possivel gerar URL publica da imagem.')
+      return
+    }
 
-  const imageUrl = IMAGENS[turno]
-  await publicarNoInstagram(texto, imageUrl)
+    const caption = gerarCaption(apostasOntem, resultados || [])
+    await publicarNoInstagram(caption, imageUrl)
+
+  } catch (err) {
+    console.error('Erro no modulo Instagram:', err.message)
+  }
 }
 
 module.exports = { postarInstagram }

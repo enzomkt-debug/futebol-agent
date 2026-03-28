@@ -1,0 +1,32 @@
+[
+  {
+    "matchId": 554820,
+    "jogo": "EC Bahia x CA Paranaense",
+    "liga": "Campeonato Brasileiro Série A",
+    "mercado": "Mais de 2.5 gols",
+    "odd": 1.8,
+    "edge": 0.09444444444444444,
+    "prioridade": 1,
+    "dataJogo": "2026-04-01"
+  },
+  {
+    "matchId": 554827,
+    "jogo": "SC Internacional x São Paulo FC",
+    "liga": "Campeonato Brasileiro Série A",
+    "mercado": "Menos de 2.5 gols",
+    "odd": 1.75,
+    "edge": 0.07857142857142863,
+    "prioridade": 1,
+    "dataJogo": "2026-04-01"
+  },
+  {
+    "matchId": 554780,
+    "jogo": "CA Paranaense x Botafogo FR",
+    "liga": "Campeonato Brasileiro Série A",
+    "mercado": "Mais de 2.5 gols",
+    "odd": 2.1,
+    "edge": 0.07380952380952388,
+    "prioridade": 1,
+    "dataJogo": "2026-03-29"
+  }
+]

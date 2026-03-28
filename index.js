@@ -2,69 +2,30 @@ require('dotenv').config()
 const axios = require('axios')
 const cron = require('node-cron')
 const fs = require('fs')
+const { postarInstagram } = require('./instagram')
 
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
+const API_BASE = 'https://api.football-data.org/v4'
 
 const APOSTAS_FILE = './apostas_ontem.json'
 
-// ─── LIGAS PRIORIZADAS (IDs API-Football) ───
+// ─── LIGAS PRIORIZADAS (football-data.org IDs) ───
 const LIGAS_PRIORIDADE = {
-  // NÚCLEO DURO
-  71: 1,    // Brasileirão Série A
-  2: 1,     // Champions League
-  13: 1,    // Libertadores
-  39: 1,    // Premier League
-  73: 1,    // Copa do Brasil
-  // MUITO FORTES
-  140: 2,   // La Liga
-  78: 2,    // Bundesliga
-  135: 2,   // Serie A Itália
-  61: 2,    // Ligue 1
-  3: 2,     // Europa League
-  848: 2,   // Conference League
-  72: 2,    // Brasileirão Série B
-  75: 2,    // Brasileirão Série C
-  76: 2,    // Brasileirão Série D
-  // ESTADUAIS BRASILEIROS
-  13: 3,    // Campeonato Paulista (71 na API)
-  62: 3,    // Campeonato Carioca
-  63: 3,    // Campeonato Mineiro
-  64: 3,    // Campeonato Gaúcho
-  // SUL-AMERICANO
-  11: 3,    // Sul-Americana
-  128: 3,   // Liga Profesional Argentina
-  // OUTRAS LIGAS
-  262: 4,   // Liga MX
-  253: 4,   // MLS
-  265: 4,   // Primera División Chile
-  239: 4,   // Categoría Primera A Colômbia
-  // COPAS INTERNACIONAIS
-  1: 2,     // Copa do Mundo FIFA
-  9: 2,     // Copa América
-  4: 2,     // Eurocopa
-  32: 2,    // Eliminatórias Copa do Mundo
-  15: 2,    // Mundial de Clubes FIFA
-  // LIGAS EUROPEIAS SECUNDÁRIAS
-  88: 4,    // Eredivisie
-  94: 4,    // Primeira Liga Portugal
-  40: 4,    // Championship Inglaterra
-  179: 4,   // Scottish Premiership
-  197: 4,   // Super League Greece
-  144: 4,   // Belgian Pro League
-  203: 4,   // Campeonato Turco
-  // LIGAS ASIÁTICAS/OUTROS
-  307: 5,   // Saudi Pro League
-  169: 5,   // Qatar Stars League
-  98: 5,    // J1 League Japão
-  292: 5,   // K League Coreia
-  323: 5,   // Indian Super League
-  480: 5,   // China Super League
-  396: 5,   // Liga Indonésia
-  340: 5,   // Liga Vietnã
-  188: 5,   // A-League Austrália
-  288: 5,   // Premier Soccer League África do Sul
+  2013: { prioridade: 1, nome: 'Brasileirao Serie A' },
+  2152: { prioridade: 1, nome: 'Copa Libertadores' },
+  2001: { prioridade: 1, nome: 'Champions League' },
+  2021: { prioridade: 1, nome: 'Premier League' },
+  2014: { prioridade: 2, nome: 'La Liga' },
+  2002: { prioridade: 2, nome: 'Bundesliga' },
+  2019: { prioridade: 2, nome: 'Serie A' },
+  2015: { prioridade: 2, nome: 'Ligue 1' },
+  2016: { prioridade: 3, nome: 'Championship' },
+  2003: { prioridade: 3, nome: 'Eredivisie' },
+  2017: { prioridade: 3, nome: 'Primeira Liga' },
+  2000: { prioridade: 4, nome: 'Copa do Mundo' },
+  2018: { prioridade: 4, nome: 'Eurocopa' }
 }
 
 const DICAS = [
@@ -100,17 +61,17 @@ function carregarApostasDeOntem() {
   }
 }
 
-async function buscarResultadoFixture(fixtureId) {
+async function buscarResultadoPartida(matchId) {
   try {
-    const res = await axios.get('https://v3.football.api-sports.io/fixtures', {
-      headers: { 'x-apisports-key': API_FOOTBALL_KEY },
-      params: { id: fixtureId }
+    const res = await axios.get(API_BASE + '/matches/' + matchId, {
+      headers: { 'X-Auth-Token': API_FOOTBALL_KEY }
     })
-    const fixture = res.data.response?.[0]
-    if (!fixture) return null
-    const status = fixture.fixture.status.short
-    if (!['FT', 'AET', 'PEN'].includes(status)) return null
-    return { golsCasa: fixture.goals.home, golsFora: fixture.goals.away }
+    const match = res.data
+    if (match.status !== 'FINISHED') return null
+    return {
+      golsCasa: match.score.fullTime.home,
+      golsFora: match.score.fullTime.away
+    }
   } catch (err) {
     return null
   }
@@ -130,7 +91,7 @@ async function gerarResultadoOntem() {
   if (!apostasOntem || !apostasOntem.length) return 'Primeiro dia de operacao!'
 
   const destaque = apostasOntem[0]
-  const resultado = await buscarResultadoFixture(destaque.fixtureId)
+  const resultado = await buscarResultadoPartida(destaque.matchId)
   if (!resultado) return destaque.jogo + '\nResultado ainda nao disponivel'
 
   const acertou = verificarAcerto(destaque, resultado)
@@ -140,7 +101,7 @@ async function gerarResultadoOntem() {
   let acertos = 0
   let total = 0
   for (const aposta of apostasOntem) {
-    const res = await buscarResultadoFixture(aposta.fixtureId)
+    const res = await buscarResultadoPartida(aposta.matchId)
     if (!res) continue
     total++
     if (verificarAcerto(aposta, res)) acertos++
@@ -154,140 +115,137 @@ async function gerarResultadoOntem() {
 
 // ─── COLETA DE DADOS ───
 
-async function buscarJogosDoDia(diasAdiante) {
-  const data = new Date()
-  data.setDate(data.getDate() + (diasAdiante || 0))
-  const dataStr = data.toISOString().split('T')[0]
+async function buscarJogosProximosDias() {
+  console.log('Buscando jogos dos proximos 7 dias...')
+  console.log('Chave API: ' + (API_FOOTBALL_KEY ? 'OK' : 'NAO ENCONTRADA'))
+
+  const hoje = new Date()
+  const fim = new Date()
+  fim.setDate(hoje.getDate() + 7)
+
+  const dateFrom = hoje.toISOString().split('T')[0]
+  const dateTo = fim.toISOString().split('T')[0]
 
   try {
-    const res = await axios.get('https://v3.football.api-sports.io/fixtures', {
-      headers: { 'x-apisports-key': API_FOOTBALL_KEY },
-      params: { date: dataStr }
+    const res = await axios.get(API_BASE + '/matches', {
+      headers: { 'X-Auth-Token': API_FOOTBALL_KEY },
+      params: { dateFrom, dateTo }
     })
 
-    const fixtures = res.data.response || []
-    const jogos = []
+    const matches = res.data.matches || []
+    console.log(matches.length + ' partidas encontradas nos proximos 7 dias')
 
-    for (const f of fixtures) {
-      const prioridade = LIGAS_PRIORIDADE[f.league.id]
-      if (!prioridade) continue
+    const jogos = []
+    for (const m of matches) {
+      const liga = LIGAS_PRIORIDADE[m.competition.id]
+      if (!liga) continue
 
       jogos.push({
-        fixtureId: f.fixture.id,
-        timeCasaId: f.teams.home.id,
-        timeForaId: f.teams.away.id,
-        timeCasa: f.teams.home.name,
-        timeFora: f.teams.away.name,
-        liga: f.league.name,
-        ligaId: f.league.id,
-        prioridade: prioridade,
-        dataJogo: dataStr,
-        horario: f.fixture.date
+        matchId: m.id,
+        timeCasaId: m.homeTeam.id,
+        timeForaId: m.awayTeam.id,
+        timeCasa: m.homeTeam.name,
+        timeFora: m.awayTeam.name,
+        liga: m.competition.name,
+        ligaId: m.competition.id,
+        prioridade: liga.prioridade,
+        dataJogo: m.utcDate.split('T')[0],
+        horario: m.utcDate
+      })
+    }
+
+    jogos.sort(function(a, b) {
+      if (a.prioridade !== b.prioridade) return a.prioridade - b.prioridade
+      return a.dataJogo.localeCompare(b.dataJogo)
+    })
+
+    console.log(jogos.length + ' jogos nas ligas prioritarias')
+    return jogos
+
+  } catch (err) {
+    console.error('Erro ao buscar jogos:', err.response?.data || err.message)
+    return []
+  }
+}
+
+async function buscarJogosHoje() {
+  const hoje = new Date().toISOString().split('T')[0]
+
+  try {
+    const res = await axios.get(API_BASE + '/matches', {
+      headers: { 'X-Auth-Token': API_FOOTBALL_KEY },
+      params: { dateFrom: hoje, dateTo: hoje }
+    })
+
+    const matches = res.data.matches || []
+    const jogos = []
+
+    for (const m of matches) {
+      const liga = LIGAS_PRIORIDADE[m.competition.id]
+      if (!liga) continue
+
+      jogos.push({
+        matchId: m.id,
+        timeCasaId: m.homeTeam.id,
+        timeForaId: m.awayTeam.id,
+        timeCasa: m.homeTeam.name,
+        timeFora: m.awayTeam.name,
+        liga: m.competition.name,
+        ligaId: m.competition.id,
+        prioridade: liga.prioridade,
+        dataJogo: hoje,
+        horario: m.utcDate
       })
     }
 
     jogos.sort(function(a, b) { return a.prioridade - b.prioridade })
     return jogos
+
   } catch (err) {
-    console.error('Erro ao buscar jogos: ' + err.message)
+    console.error('Erro ao buscar jogos de hoje:', err.message)
     return []
-  }
-}
-
-async function buscarJogosProximosDias() {
-  console.log('Buscando jogos dos proximos 7 dias...')
-  console.log('Chave API: ' + (API_FOOTBALL_KEY ? 'OK' : 'NAO ENCONTRADA'))
-
-  const todosJogos = []
-
-  for (let i = 0; i <= 6; i++) {
-    const jogos = await buscarJogosDoDia(i)
-    todosJogos.push(...jogos)
-  }
-
-  todosJogos.sort(function(a, b) {
-    if (a.prioridade !== b.prioridade) return a.prioridade - b.prioridade
-    return a.dataJogo.localeCompare(b.dataJogo)
-  })
-
-  console.log(todosJogos.length + ' jogos relevantes encontrados')
-  return todosJogos
-}
-
-async function buscarOdds(fixtureId) {
-  try {
-    const res = await axios.get('https://v3.football.api-sports.io/odds', {
-      headers: { 'x-apisports-key': API_FOOTBALL_KEY },
-      params: { fixture: fixtureId, bookmaker: 8 }
-    })
-
-    const bookmakers = res.data.response?.[0]?.bookmakers || []
-    if (!bookmakers.length) return null
-
-    const bets = bookmakers[0].bets || []
-    const resultado = {}
-
-    for (const bet of bets) {
-      if (bet.name === 'Goals Over/Under') {
-        for (const v of bet.values) {
-          if (v.value === 'Over 2.5') resultado.over25 = parseFloat(v.odd)
-          if (v.value === 'Under 2.5') resultado.under25 = parseFloat(v.odd)
-        }
-      }
-      if (bet.name === 'Both Teams Score') {
-        for (const v of bet.values) {
-          if (v.value === 'Yes') resultado.bttsSim = parseFloat(v.odd)
-        }
-      }
-    }
-
-    return Object.keys(resultado).length ? resultado : null
-  } catch (err) {
-    return null
   }
 }
 
 async function buscarStats(timeCasaId, timeForaId) {
   try {
-    const [resCasa, resFora, resH2H] = await Promise.all([
-      axios.get('https://v3.football.api-sports.io/fixtures', {
-        headers: { 'x-apisports-key': API_FOOTBALL_KEY },
-        params: { team: timeCasaId, last: 5 }
+    const [resCasa, resFora] = await Promise.all([
+      axios.get(API_BASE + '/teams/' + timeCasaId + '/matches', {
+        headers: { 'X-Auth-Token': API_FOOTBALL_KEY },
+        params: { status: 'FINISHED', limit: 5 }
       }),
-      axios.get('https://v3.football.api-sports.io/fixtures', {
-        headers: { 'x-apisports-key': API_FOOTBALL_KEY },
-        params: { team: timeForaId, last: 5 }
-      }),
-      axios.get('https://v3.football.api-sports.io/fixtures/headtohead', {
-        headers: { 'x-apisports-key': API_FOOTBALL_KEY },
-        params: { h2h: timeCasaId + '-' + timeForaId, last: 5 }
+      axios.get(API_BASE + '/teams/' + timeForaId + '/matches', {
+        headers: { 'X-Auth-Token': API_FOOTBALL_KEY },
+        params: { status: 'FINISHED', limit: 5 }
       })
     ])
 
-    const calcular = function(fixtures) {
-      if (!fixtures.length) return { mediaGols: 1.5, btts: 0.5 }
+    const calcular = function(matches, teamId) {
+      if (!matches.length) return { mediaGols: 1.5, btts: 0.5 }
       let totalGols = 0
       let bttsCount = 0
-      for (const f of fixtures) {
-        const gc = f.goals.home ?? 0
-        const gf = f.goals.away ?? 0
+      for (const m of matches) {
+        const gc = m.score.fullTime.home ?? 0
+        const gf = m.score.fullTime.away ?? 0
         totalGols += gc + gf
         if (gc > 0 && gf > 0) bttsCount++
       }
-      return { mediaGols: totalGols / fixtures.length, btts: bttsCount / fixtures.length }
+      return { mediaGols: totalGols / matches.length, btts: bttsCount / matches.length }
     }
 
     return {
-      casa: calcular(resCasa.data.response || []),
-      fora: calcular(resFora.data.response || []),
-      h2h: calcular(resH2H.data.response || [])
+      casa: calcular(resCasa.data.matches || [], timeCasaId),
+      fora: calcular(resFora.data.matches || [], timeForaId),
+      h2h: { mediaGols: 2.0, btts: 0.5 } // H2H simplificado
     }
   } catch (err) {
     return null
   }
 }
 
-function calcularEdge(stats, odds) {
+function calcularEdge(stats, jogo) {
+  // Odds simuladas baseadas na probabilidade estimada
+  // No MVP sem API de odds, usamos odds médias de mercado
   const mediaPonderada = ((stats.casa.mediaGols + stats.fora.mediaGols) / 2) * 0.7 + stats.h2h.mediaGols * 0.3
 
   let probOver25
@@ -298,20 +256,21 @@ function calcularEdge(stats, odds) {
 
   const probBTTS = ((stats.casa.btts + stats.fora.btts) / 2) * 0.6 + stats.h2h.btts * 0.4
 
+  // Odds típicas de mercado para comparação
+  const oddOver25 = mediaPonderada >= 2.5 ? 1.80 : 2.10
+  const oddUnder25 = mediaPonderada >= 2.5 ? 2.00 : 1.75
+  const oddBTTS = probBTTS >= 0.55 ? 1.75 : 2.00
+
   const bets = []
 
-  if (odds.over25) {
-    const edge = probOver25 - (1 / odds.over25)
-    if (edge >= 0.05) bets.push({ mercado: 'Mais de 2.5 gols', odd: odds.over25, edge: edge })
-  }
-  if (odds.under25) {
-    const edge = (1 - probOver25) - (1 / odds.under25)
-    if (edge >= 0.05) bets.push({ mercado: 'Menos de 2.5 gols', odd: odds.under25, edge: edge })
-  }
-  if (odds.bttsSim) {
-    const edge = probBTTS - (1 / odds.bttsSim)
-    if (edge >= 0.05) bets.push({ mercado: 'Ambas marcam: SIM', odd: odds.bttsSim, edge: edge })
-  }
+  const edgeOver = probOver25 - (1 / oddOver25)
+  if (edgeOver >= 0.05) bets.push({ mercado: 'Mais de 2.5 gols', odd: oddOver25, edge: edgeOver })
+
+  const edgeUnder = (1 - probOver25) - (1 / oddUnder25)
+  if (edgeUnder >= 0.05) bets.push({ mercado: 'Menos de 2.5 gols', odd: oddUnder25, edge: edgeUnder })
+
+  const edgeBTTS = probBTTS - (1 / oddBTTS)
+  if (edgeBTTS >= 0.05) bets.push({ mercado: 'Ambas marcam: SIM', odd: oddBTTS, edge: edgeBTTS })
 
   return bets
 }
@@ -326,7 +285,6 @@ function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno) {
   const emojis = ['1.', '2.', '3.', '4.', '5.']
   const dica = DICAS[Math.floor(Math.random() * DICAS.length)]
   const hojeStr = new Date().toISOString().split('T')[0]
-
   const turnoLabel = turno === 'manha' ? 'ANALISE DA MANHA' : turno === 'tarde' ? 'ANALISE DA TARDE' : 'ANALISE DA NOITE'
 
   let listaApostas = ''
@@ -344,36 +302,25 @@ function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno) {
     evitar = 'JOGO PARA EVITAR\n\n' + jogoParaEvitar.jogo + '\nEdge negativo — odd nao compensa o risco.\n\n---\n'
   }
 
-  // Resultado de ontem so aparece na mensagem da manha
   const secaoResultado = turno === 'manha' ? 'RESULTADO DE ONTEM\n' + resultadoOntem + '\n\n---\n' : ''
 
-  const linhas = [
+  return [
     turnoLabel + ' - ' + hoje,
-    '---',
-    '',
+    '---', '',
     secaoResultado,
-    'APOSTA DESTAQUE',
-    '',
+    'APOSTA DESTAQUE', '',
     destaque.jogo + ' (' + destaque.liga + ')',
     'Mercado: ' + destaque.mercado,
     'Odd: ' + destaque.odd.toFixed(2),
     'Quando: ' + destaqueData,
-    '',
-    '---',
-    'TODAS AS APOSTAS',
-    '',
+    '', '---',
+    'TODAS AS APOSTAS', '',
     listaApostas,
-    '---',
-    evitar,
-    'DICA RAPIDA',
-    '',
-    dica,
-    '',
+    '---', evitar,
+    'DICA RAPIDA', '', dica, '',
     '---',
     'Aposte com responsabilidade. Nunca mais do que voce pode perder.'
-  ]
-
-  return linhas.join('\n')
+  ].join('\n')
 }
 
 async function enviarTelegram(mensagem) {
@@ -382,34 +329,27 @@ async function enviarTelegram(mensagem) {
       chat_id: TELEGRAM_CHAT_ID,
       text: mensagem
     })
-    console.log('Mensagem enviada com sucesso!')
+    console.log('Mensagem enviada no Telegram!')
   } catch (err) {
     console.error('Erro Telegram:', err.response?.data || err.message)
   }
 }
 
-// ─── AGENTE PRINCIPAL ───
-
 async function runAgent(turno) {
   console.log('\n[' + new Date().toISOString() + '] Agente iniciado - turno: ' + turno)
 
   try {
-    // Resultado de ontem so na manha
     let resultadoOntem = ''
     if (turno === 'manha') {
-      console.log('Verificando resultado de ontem...')
       resultadoOntem = await gerarResultadoOntem()
-      console.log('Resultado: ' + resultadoOntem)
+      console.log('Resultado ontem: ' + resultadoOntem)
     }
 
-    // Busca jogos — manha busca 7 dias, tarde e noite busca so hoje
     let jogos = []
     if (turno === 'manha') {
       jogos = await buscarJogosProximosDias()
     } else {
-      jogos = await buscarJogosDoDia(0)
-      // Tarde: filtra jogos a partir das 14h
-      // Noite: filtra jogos a partir das 18h
+      jogos = await buscarJogosHoje()
       const horaCorte = turno === 'tarde' ? 14 : 18
       jogos = jogos.filter(function(j) {
         const hora = new Date(j.horario).getHours()
@@ -419,7 +359,7 @@ async function runAgent(turno) {
 
     if (!jogos.length) {
       console.log('Nenhum jogo relevante para este turno.')
-      return // Nao envia nada se nao tiver jogo
+      return
     }
 
     const todasApostas = []
@@ -427,17 +367,15 @@ async function runAgent(turno) {
     const jogosFiltrados = jogos.slice(0, 25)
 
     for (const jogo of jogosFiltrados) {
-      const odds = await buscarOdds(jogo.fixtureId)
       const stats = await buscarStats(jogo.timeCasaId, jogo.timeForaId)
+      if (!stats) continue
 
-      if (!odds || !stats) continue
-
-      const bets = calcularEdge(stats, odds)
+      const bets = calcularEdge(stats, jogo)
 
       if (bets.length > 0) {
         for (const b of bets) {
           todasApostas.push({
-            fixtureId: jogo.fixtureId,
+            matchId: jogo.matchId,
             jogo: jogo.timeCasa + ' x ' + jogo.timeFora,
             liga: jogo.liga,
             mercado: b.mercado,
@@ -453,8 +391,8 @@ async function runAgent(turno) {
     }
 
     if (!todasApostas.length) {
-      console.log('Nenhum value bet encontrado neste turno. Nao enviando mensagem.')
-      return // Nao envia nada se nao tiver value bet
+      console.log('Nenhum value bet encontrado neste turno.')
+      return
     }
 
     todasApostas.sort(function(a, b) {
@@ -473,15 +411,27 @@ async function runAgent(turno) {
     console.log('\n--- MENSAGEM ---\n' + mensagem + '\n---')
 
     await enviarTelegram(mensagem)
+    // Para o Instagram, busca resultados reais das apostas de ontem
+    if (turno === 'manha') {
+      const apostasOntem = carregarApostasDeOntem()
+      const resultadosReais = []
+      if (apostasOntem && apostasOntem.length) {
+        for (const a of apostasOntem) {
+          const res = await buscarResultadoPartida(a.matchId)
+          resultadosReais.push(res)
+        }
+      }
+      await postarInstagram(apostasOntem, resultadosReais, turno)
+    }
 
   } catch (err) {
     console.error('Erro geral:', err.message)
+    await enviarTelegram('Erro ao gerar analise de hoje. Voltamos em breve!')
   }
 
   console.log('[' + new Date().toISOString() + '] Agente finalizado')
 }
 
-// ─── AGENDAMENTO 3x POR DIA ───
 cron.schedule('0 8 * * *',  function() { runAgent('manha') }, { timezone: 'America/Sao_Paulo' })
 cron.schedule('0 13 * * *', function() { runAgent('tarde') }, { timezone: 'America/Sao_Paulo' })
 cron.schedule('0 19 * * *', function() { runAgent('noite') }, { timezone: 'America/Sao_Paulo' })
