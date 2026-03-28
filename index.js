@@ -1,23 +1,15 @@
 require('dotenv').config()
 const axios = require('axios')
 const cron = require('node-cron')
-
-// ─── RESULTADO DE ONTEM (atualiza manualmente todo dia) ───
-const RESULTADO_ONTEM = {
-  jogo: 'Nenhum jogo ontem',
-  tip: '',
-  acertou: null
-}
+const fs = require('fs')
 
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
 
-// Ligas prioritarias — aparecem primeiro na analise
-// Se nao tiver jogos nelas hoje, usa as outras automaticamente
+const APOSTAS_FILE = './apostas_ontem.json'
+
 const LIGAS_PRIORITARIAS = new Set([71, 73, 13, 2, 39, 140, 135, 78])
-// 71=Brasileirao A, 73=Copa do Brasil, 13=Libertadores
-// 2=Champions League, 39=Premier League, 140=La Liga, 135=Serie A, 78=Bundesliga
 
 const DICAS = [
   'Odd 2.00 significa que a casa acha que tem 50% de chance. Se voce acha que tem 60%, ai existe valor real.',
@@ -28,6 +20,98 @@ const DICAS = [
   'Forma recente dos ultimos 5 jogos importa mais do que o historico da temporada inteira.',
   'Jogos de Copa geralmente tem menos gols que jogos de campeonato. Cuidado com Over em mata-mata.'
 ]
+
+// ─── RESULTADO DE ONTEM (automatico) ───
+
+function salvarApostasDeHoje(apostas) {
+  try {
+    fs.writeFileSync(APOSTAS_FILE, JSON.stringify(apostas, null, 2))
+    console.log('Apostas de hoje salvas para verificacao amanha')
+  } catch (err) {
+    console.error('Erro ao salvar apostas:', err.message)
+  }
+}
+
+function carregarApostasDeOntem() {
+  try {
+    if (!fs.existsSync(APOSTAS_FILE)) return null
+    const data = fs.readFileSync(APOSTAS_FILE, 'utf8')
+    return JSON.parse(data)
+  } catch (err) {
+    return null
+  }
+}
+
+async function buscarResultadoFixture(fixtureId) {
+  try {
+    const res = await axios.get('https://v3.football.api-sports.io/fixtures', {
+      headers: { 'x-apisports-key': API_FOOTBALL_KEY },
+      params: { id: fixtureId }
+    })
+    const fixture = res.data.response?.[0]
+    if (!fixture) return null
+
+    const status = fixture.fixture.status.short
+    // FT = full time, AET = after extra time, PEN = penalties
+    if (!['FT', 'AET', 'PEN'].includes(status)) return null
+
+    return {
+      golsCasa: fixture.goals.home,
+      golsFora: fixture.goals.away,
+      status: status
+    }
+  } catch (err) {
+    return null
+  }
+}
+
+function verificarAcerto(aposta, resultado) {
+  const totalGols = resultado.golsCasa + resultado.golsFora
+  const ambasMarcaram = resultado.golsCasa > 0 && resultado.golsFora > 0
+
+  if (aposta.mercado === 'Mais de 2.5 gols') return totalGols > 2
+  if (aposta.mercado === 'Menos de 2.5 gols') return totalGols < 3
+  if (aposta.mercado === 'Ambas marcam: SIM') return ambasMarcaram
+  return false
+}
+
+async function gerarResultadoOntem() {
+  const apostasOntem = carregarApostasDeOntem()
+  if (!apostasOntem || !apostasOntem.length) {
+    return 'Primeiro dia de operacao!'
+  }
+
+  const destaque = apostasOntem[0]
+  const resultado = await buscarResultadoFixture(destaque.fixtureId)
+
+  if (!resultado) {
+    return destaque.jogo + '\nResultado ainda nao disponivel'
+  }
+
+  const acertou = verificarAcerto(destaque, resultado)
+  const placar = resultado.golsCasa + ' x ' + resultado.golsFora
+  const status = acertou ? 'VERDE ✅' : 'VERMELHO ❌'
+
+  // Conta acertos do dia
+  let acertos = 0
+  let total = 0
+  for (const aposta of apostasOntem) {
+    const res = await buscarResultadoFixture(aposta.fixtureId)
+    if (!res) continue
+    total++
+    if (verificarAcerto(aposta, res)) acertos++
+  }
+
+  let resumo = destaque.jogo + ' (' + placar + ')\n'
+  resumo += 'Tip: ' + destaque.mercado + ' - ' + status
+  if (total > 1) {
+    resumo += '\nDia anterior: ' + acertos + ' de ' + total + ' certas'
+  }
+
+  return resumo
+}
+
+// ─── COLETA DE DADOS ───
 
 async function buscarJogosDoDia() {
   const hoje = new Date().toISOString().split('T')[0]
@@ -177,19 +261,10 @@ function calcularEdge(stats, odds) {
   return bets
 }
 
-function gerarMensagem(apostas, jogoParaEvitar) {
+function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem) {
   const hoje = new Date().toLocaleDateString('pt-BR')
   const emojis = ['1.', '2.', '3.', '4.', '5.']
   const dica = DICAS[new Date().getDay() % DICAS.length]
-
-  let resultadoOntem = ''
-  if (RESULTADO_ONTEM.acertou === null) {
-    resultadoOntem = 'Primeiro dia de operacao!'
-  } else if (RESULTADO_ONTEM.acertou) {
-    resultadoOntem = RESULTADO_ONTEM.jogo + '\nNossa tip: ' + RESULTADO_ONTEM.tip + ' - VERDE'
-  } else {
-    resultadoOntem = RESULTADO_ONTEM.jogo + '\nNossa tip: ' + RESULTADO_ONTEM.tip + ' - VERMELHO'
-  }
 
   let listaApostas = ''
   apostas.forEach(function(a, i) {
@@ -246,10 +321,18 @@ async function enviarTelegram(mensagem) {
   }
 }
 
+// ─── AGENTE PRINCIPAL ───
+
 async function runAgent() {
   console.log('\n[' + new Date().toISOString() + '] Agente iniciado')
 
   try {
+    // 1. Busca resultado de ontem automaticamente
+    console.log('Verificando resultado de ontem...')
+    const resultadoOntem = await gerarResultadoOntem()
+    console.log('Resultado ontem: ' + resultadoOntem)
+
+    // 2. Busca jogos de hoje
     const jogos = await buscarJogosDoDia()
 
     if (!jogos.length) {
@@ -258,6 +341,7 @@ async function runAgent() {
       return
     }
 
+    // 3. Analisa jogos
     const todasApostas = []
     const jogosComBaixoEdge = []
     const jogosFiltrados = jogos.slice(0, 20)
@@ -273,6 +357,7 @@ async function runAgent() {
       if (bets.length > 0) {
         for (const b of bets) {
           todasApostas.push({
+            fixtureId: jogo.fixtureId,
             jogo: jogo.timeCasa + ' x ' + jogo.timeFora,
             liga: jogo.liga,
             mercado: b.mercado,
@@ -290,13 +375,17 @@ async function runAgent() {
       return
     }
 
+    // 4. Seleciona top 5 e salva para verificar amanha
     todasApostas.sort(function(a, b) { return b.edge - a.edge })
     const top5 = todasApostas.slice(0, 5)
     const jogoParaEvitar = jogosComBaixoEdge[0] || null
 
+    salvarApostasDeHoje(top5)
+
     console.log(top5.length + ' value bets encontrados')
 
-    const mensagem = gerarMensagem(top5, jogoParaEvitar)
+    // 5. Gera e envia mensagem
+    const mensagem = gerarMensagem(top5, jogoParaEvitar, resultadoOntem)
     console.log('\n--- MENSAGEM ---\n' + mensagem + '\n---')
 
     await enviarTelegram(mensagem)
