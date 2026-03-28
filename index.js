@@ -3,6 +3,7 @@ const axios = require('axios')
 const cron = require('node-cron')
 const fs = require('fs')
 const { postarInstagram } = require('./instagram')
+const { createClient } = require('@supabase/supabase-js')
 
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN
@@ -10,6 +11,111 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
 const API_BASE = 'https://api.football-data.org/v4'
 
 const APOSTAS_FILE = './apostas_ontem.json'
+
+// ─── SUPABASE ───
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+)
+
+async function salvarApostasSupabase(apostas, turno) {
+  try {
+    const registros = apostas.map(function(a) {
+      return {
+        match_id: a.matchId,
+        jogo: a.jogo,
+        liga: a.liga,
+        mercado: a.mercado,
+        odd: a.odd,
+        edge: a.edge,
+        data_jogo: a.dataJogo,
+        turno: turno
+      }
+    })
+    const { error } = await supabase.from('apostas').insert(registros)
+    if (error) console.error('Erro ao salvar apostas no Supabase:', error.message)
+    else console.log(apostas.length + ' apostas salvas no Supabase')
+  } catch (err) {
+    console.error('Erro Supabase:', err.message)
+  }
+}
+
+async function salvarResultadosSupabase(apostasOntem, resultados) {
+  try {
+    for (let i = 0; i < apostasOntem.length; i++) {
+      const aposta = apostasOntem[i]
+      const resultado = resultados[i]
+      if (!resultado) continue
+
+      // Busca o ID da aposta no banco pelo match_id
+      const { data } = await supabase
+        .from('apostas')
+        .select('id')
+        .eq('match_id', aposta.matchId)
+        .order('criado_em', { ascending: false })
+        .limit(1)
+
+      if (!data || !data.length) continue
+
+      const totalGols = resultado.golsCasa + resultado.golsFora
+      const ambasMarcaram = resultado.golsCasa > 0 && resultado.golsFora > 0
+      let acertou = false
+      if (aposta.mercado === 'Mais de 2.5 gols') acertou = totalGols > 2
+      else if (aposta.mercado === 'Menos de 2.5 gols') acertou = totalGols < 3
+      else if (aposta.mercado === 'Ambas marcam: SIM') acertou = ambasMarcaram
+
+      await supabase.from('resultados').insert({
+        aposta_id: data[0].id,
+        gols_casa: resultado.golsCasa,
+        gols_fora: resultado.golsFora,
+        acertou: acertou
+      })
+    }
+    console.log('Resultados salvos no Supabase')
+  } catch (err) {
+    console.error('Erro ao salvar resultados:', err.message)
+  }
+}
+
+async function buscarPerformance() {
+  try {
+    const trintaDiasAtras = new Date()
+    trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30)
+    const dataCorte = trintaDiasAtras.toISOString().split('T')[0]
+
+    const { data } = await supabase
+      .from('apostas')
+      .select('id, odd, resultados(acertou)')
+      .gte('data_jogo', dataCorte)
+
+    if (!data || !data.length) return null
+
+    let total = 0
+    let acertos = 0
+    let roi = 0
+
+    for (const aposta of data) {
+      if (!aposta.resultados || !aposta.resultados.length) continue
+      total++
+      if (aposta.resultados[0].acertou) {
+        acertos++
+        roi += aposta.odd - 1
+      } else {
+        roi -= 1
+      }
+    }
+
+    if (total === 0) return null
+
+    const taxa = Math.round((acertos / total) * 100)
+    const roiPct = Math.round((roi / total) * 100)
+
+    return { total, acertos, taxa, roiPct }
+  } catch (err) {
+    console.error('Erro ao buscar performance:', err.message)
+    return null
+  }
+}
 
 // ─── LIGAS PRIORIZADAS (football-data.org IDs) ───
 const LIGAS_PRIORIDADE = {
@@ -280,12 +386,20 @@ function formatarData(dataStr) {
   return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
 }
 
-function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno) {
+function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno, performance) {
   const hoje = new Date().toLocaleDateString('pt-BR')
   const emojis = ['1.', '2.', '3.', '4.', '5.']
   const dica = DICAS[Math.floor(Math.random() * DICAS.length)]
   const hojeStr = new Date().toISOString().split('T')[0]
   const turnoLabel = turno === 'manha' ? 'ANALISE DA MANHA' : turno === 'tarde' ? 'ANALISE DA TARDE' : 'ANALISE DA NOITE'
+
+  // Seção de performance (só na manhã se tiver dados)
+  let secaoPerformance = ''
+  if (turno === 'manha' && performance) {
+    const emoji = performance.taxa >= 60 ? '🔥' : performance.taxa >= 50 ? '📊' : '📉'
+    secaoPerformance = emoji + ' PERFORMANCE (ultimos 30 dias)\n'
+    secaoPerformance += performance.acertos + '/' + performance.total + ' certas | Taxa: ' + performance.taxa + '% | ROI: ' + (performance.roiPct >= 0 ? '+' : '') + performance.roiPct + '%\n\n---\n'
+  }
 
   // Agrupa apostas por jogo para mostrar múltiplos mercados
   const jogosMapa = {}
@@ -350,6 +464,7 @@ function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno) {
     'TODAS AS APOSTAS', '',
     listaApostas,
     '---', evitar,
+    secaoPerformance,
     'DICA RAPIDA', '', dica, '',
     '---',
     'Aposte com responsabilidade. Nunca mais do que voce pode perder.'
