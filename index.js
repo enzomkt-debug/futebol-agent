@@ -287,19 +287,49 @@ function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno) {
   const hojeStr = new Date().toISOString().split('T')[0]
   const turnoLabel = turno === 'manha' ? 'ANALISE DA MANHA' : turno === 'tarde' ? 'ANALISE DA TARDE' : 'ANALISE DA NOITE'
 
+  // Agrupa apostas por jogo para mostrar múltiplos mercados
+  const jogosMapa = {}
+  apostas.forEach(function(a) {
+    if (!jogosMapa[a.jogo]) jogosMapa[a.jogo] = []
+    jogosMapa[a.jogo].push(a)
+  })
+
+  const jogosUnicos = Object.values(jogosMapa)
   let listaApostas = ''
-  apostas.forEach(function(a, i) {
-    const dataLabel = a.dataJogo === hojeStr ? 'HOJE' : formatarData(a.dataJogo)
-    listaApostas += emojis[i] + ' ' + a.jogo + ' (' + a.liga + ')\n'
-    listaApostas += '   ' + a.mercado + ' | Odd ' + a.odd.toFixed(2) + ' | ' + dataLabel + '\n\n'
+  let contador = 1
+
+  jogosUnicos.forEach(function(mercados) {
+    const principal = mercados[0]
+    const dataLabel = principal.dataJogo === hojeStr ? 'HOJE' : formatarData(principal.dataJogo)
+    const probPct = Math.round((1 / principal.odd + principal.edge) * 100)
+    const oddImplicita = Math.round((1 / principal.odd) * 100)
+
+    listaApostas += contador + '. ' + principal.jogo + ' (' + principal.liga + ') — ' + dataLabel + '\n'
+
+    // Melhor valor em destaque
+    listaApostas += '   MELHOR VALOR: ' + principal.mercado + ' | Odd ' + principal.odd.toFixed(2) + '\n'
+    listaApostas += '   Nosso modelo: ' + probPct + '% de chance | Casa acha: ' + oddImplicita + '%\n'
+
+    // Outros mercados do mesmo jogo
+    if (mercados.length > 1) {
+      listaApostas += '   OUTRAS OPCOES:\n'
+      mercados.slice(1).forEach(function(m) {
+        listaApostas += '   — ' + m.mercado + ' | Odd ' + m.odd.toFixed(2) + '\n'
+      })
+    }
+
+    listaApostas += '\n'
+    contador++
   })
 
   const destaque = apostas[0]
   const destaqueData = destaque.dataJogo === hojeStr ? 'HOJE' : formatarData(destaque.dataJogo)
+  const destaqueProbPct = Math.round((1 / destaque.odd + destaque.edge) * 100)
+  const destaqueOddImplicita = Math.round((1 / destaque.odd) * 100)
 
   let evitar = ''
   if (jogoParaEvitar) {
-    evitar = 'JOGO PARA EVITAR\n\n' + jogoParaEvitar.jogo + '\nEdge negativo — odd nao compensa o risco.\n\n---\n'
+    evitar = 'JOGO PARA EVITAR\n\n' + jogoParaEvitar.jogo + '\nA odd nao reflete a probabilidade real — risco nao compensa.\n\n---\n'
   }
 
   const secaoResultado = turno === 'manha' ? 'RESULTADO DE ONTEM\n' + resultadoOntem + '\n\n---\n' : ''
@@ -311,8 +341,11 @@ function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno) {
     'APOSTA DESTAQUE', '',
     destaque.jogo + ' (' + destaque.liga + ')',
     'Mercado: ' + destaque.mercado,
-    'Odd: ' + destaque.odd.toFixed(2),
-    'Quando: ' + destaqueData,
+    'Odd: ' + destaque.odd.toFixed(2) + ' | Quando: ' + destaqueData,
+    '',
+    'Nosso modelo estima ' + destaqueProbPct + '% de chance.',
+    'A casa de apostas esta pagando como se fosse ' + destaqueOddImplicita + '%.',
+    'Essa diferenca de ' + Math.round(destaque.edge * 100) + '% e o valor real dessa aposta.',
     '', '---',
     'TODAS AS APOSTAS', '',
     listaApostas,
