@@ -3,6 +3,8 @@ const axios = require('axios')
 const { gerarESubirImagem } = require('./gerarImagem')
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
+
+const FONTE = process.platform === 'win32' ? 'Arial' : 'DejaVu Sans'
 const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
 const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 
@@ -101,17 +103,17 @@ async function gerarImagemContexto(jogo) {
 
   // Header
   ctx.fillStyle = '#e94560'
-  ctx.font = 'bold 48px Arial'
+  ctx.font = 'bold 48px ' + FONTE
   ctx.fillText('Gol Match BR', 70, 85)
 
   ctx.fillStyle = '#444455'
-  ctx.font = '22px Arial'
+  ctx.font = '22px ' + FONTE
   ctx.fillText('@golmatchbr', 70, 118)
 
   // Tag da liga
   const ligaCurta = jogo.liga.length > 25 ? jogo.liga.substring(0, 25) + '...' : jogo.liga
   ctx.fillStyle = '#e94560'
-  ctx.font = 'bold 20px Arial'
+  ctx.font = 'bold 20px ' + FONTE
   ctx.textAlign = 'right'
   ctx.fillText(ligaCurta.toUpperCase(), 1010, 85)
   ctx.textAlign = 'left'
@@ -122,7 +124,7 @@ async function gerarImagemContexto(jogo) {
 
   // Label ANALISE DO DIA (removido JOGO DO DIA para ser mais neutro)
   ctx.fillStyle = '#555566'
-  ctx.font = 'bold 20px Arial'
+  ctx.font = 'bold 20px ' + FONTE
   ctx.textAlign = 'center'
   ctx.fillText('ANALISE DO DIA', 540, 210)
 
@@ -132,15 +134,15 @@ async function gerarImagemContexto(jogo) {
   const foraNome = jogo.timeFora.length > maxLen ? jogo.timeFora.substring(0, maxLen) : jogo.timeFora
 
   ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 72px Arial'
+  ctx.font = 'bold 72px ' + FONTE
   ctx.fillText(casaNome, 540, 310)
 
   ctx.fillStyle = '#e94560'
-  ctx.font = 'bold 52px Arial'
+  ctx.font = 'bold 52px ' + FONTE
   ctx.fillText('VS', 540, 390)
 
   ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 72px Arial'
+  ctx.font = 'bold 72px ' + FONTE
   ctx.fillText(foraNome, 540, 470)
 
   // Data
@@ -148,7 +150,7 @@ async function gerarImagemContexto(jogo) {
     weekday: 'long', day: '2-digit', month: 'long'
   })
   ctx.fillStyle = '#888899'
-  ctx.font = '26px Arial'
+  ctx.font = '26px ' + FONTE
   ctx.fillText(dataFormatada, 540, 535)
 
   // Linha divisoria
@@ -168,16 +170,16 @@ async function gerarImagemContexto(jogo) {
   ctx.stroke()
 
   ctx.fillStyle = '#e94560'
-  ctx.font = 'bold 20px Arial'
+  ctx.font = 'bold 20px ' + FONTE
   ctx.fillText('O QUE OS DADOS DIZEM?', 540, 630)
 
   ctx.fillStyle = '#ccccdd'
-  ctx.font = '24px Arial'
+  ctx.font = '24px ' + FONTE
   ctx.fillText('Nossos assinantes ja receberam', 540, 675)
   ctx.fillText('a analise completa as 8h.', 540, 710)
 
   ctx.fillStyle = '#888899'
-  ctx.font = '20px Arial'
+  ctx.font = '20px ' + FONTE
   ctx.fillText('Brasileirao · Champions · Premier · Libertadores', 540, 760)
 
   // CTA
@@ -187,15 +189,15 @@ async function gerarImagemContexto(jogo) {
   ctx.fill()
 
   ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 26px Arial'
+  ctx.font = 'bold 26px ' + FONTE
   ctx.fillText('ASSINAR — LINK NA BIO', 540, 863)
 
   ctx.fillStyle = '#444455'
-  ctx.font = '22px Arial'
+  ctx.font = '22px ' + FONTE
   ctx.fillText('Analise baseada em dados, nao em palpite', 540, 940)
 
   ctx.fillStyle = '#333344'
-  ctx.font = '20px Arial'
+  ctx.font = '20px ' + FONTE
   ctx.fillText('golmatchbr · analise estatistica de futebol', 540, 975)
 
   ctx.textAlign = 'left'
