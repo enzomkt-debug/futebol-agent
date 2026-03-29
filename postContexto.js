@@ -256,7 +256,8 @@ async function publicarViaZernio(caption, imageUrl) {
     const res = await axios.post('https://zernio.com/api/v1/posts', {
       platforms: [{ platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }],
       content: caption,
-      mediaItems: [{ type: 'image', url: imageUrl }]
+      mediaItems: [{ type: 'image', url: imageUrl }],
+      publishNow: true
     }, {
       headers: {
         'Authorization': 'Bearer ' + ZERNIO_API_KEY,
