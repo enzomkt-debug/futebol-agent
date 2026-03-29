@@ -286,6 +286,9 @@ async function monitorarResultados() {
     // Salva no Supabase
     await salvarResultadosSupabase([aposta], [resultado])
 
+    // Posta no Instagram assim que o jogo terminar
+    await postarInstagram([aposta], [resultado], 'manha')
+
     // Marca como notificado
     notificados[chave] = true
     algumNovo = true
