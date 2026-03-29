@@ -20,13 +20,13 @@ function gerarCaption(apostasOntem, resultados) {
   if (!apostasOntem || !apostasOntem.length || !resultados || !resultados.length) {
     return `⚽ GolLucrativo — ${hoje}
 
-Primeiro dia de operacao! A partir de amanha voce vai ver por que dados batem feeling.
+Primeiro dia de operacao! A partir de amanha voce acompanha os resultados das nossas analises diarias.
 
-Brasileirao, Champions League, Premier League, Libertadores e mais 9 ligas analisadas automaticamente todo dia.
+Brasileirao, Champions League, Premier League, Libertadores e mais 9 ligas analisadas automaticamente por inteligencia artificial todo dia.
 
-Todo dia as 8h no seu Telegram. Link na bio para assinar.
+Analise completa todo dia as 8h no Telegram. Link na bio para acessar.
 
-#apostas #futebol #valuebets #brasileirao #championsleague #gollucrativo #apostasesportivas #tipster`
+#futebol #analiseesportiva #inteligenciaartificial #brasileirao #championsleague #gollucrativo #dadosesportivos #futebolanalitico #estatisticas`
   }
 
   let acertos = 0
@@ -44,42 +44,38 @@ Todo dia as 8h no seu Telegram. Link na bio para assinar.
   const taxa = total > 0 ? Math.round((acertos / total) * 100) : 0
   const destaqueRes = resultados[0]
   const placar = destaqueRes ? destaqueRes.golsCasa + ' x ' + destaqueRes.golsFora : ''
-  const retorno = Math.round(100 * apostasOntem[0].odd)
+  const probPct = Math.round((1/apostasOntem[0].odd + apostasOntem[0].edge)*100)
 
   if (destaqueAcertou) {
-    return `✅ VERDE — ${hoje}
+    return `✅ ACERTOU — ${hoje}
 
 ${apostasOntem[0].jogo} · ${placar}
-${apostasOntem[0].mercado} · Odd ${apostasOntem[0].odd.toFixed(2)}
+Mercado: ${apostasOntem[0].mercado}
 
-R$ 100 apostados → R$ ${retorno} recebidos.
+Nossa analise apontou ${probPct}% de probabilidade estatistica. Confirmado.
 
-Nossos assinantes receberam essa analise as 8h da manha, com tempo de sobra para apostar.
+Quem acompanha o grupo recebeu essa analise as 8h da manha, antes do jogo comecar.
 
-Ultimos 30 dias: ${acertos}/${total} certas · Taxa: ${taxa}%
+Ultimos 30 dias: ${acertos}/${total} analises corretas · ${taxa}% de aproveitamento.
 
-Seus concorrentes ja assinaram. Voce ainda vai ficar de fora?
-Link na bio.
+Quer receber antes? Link na bio.
 
-#green #verde #apostasesportivas #futebol #valuebets #brasileirao #championsleague #libertadores #tipster #gollucrativo #apostasinteligentes #resultados #greens #betbrasil`
+#futebol #analiseesportiva #inteligenciaartificial #brasileirao #championsleague #libertadores #estatisticas #gollucrativo #dadosesportivos #futebolanalitico`
   } else {
-    return `📊 VERMELHO — e tudo bem.
+    return `📊 NAO CONFIRMOU — faz parte da analise estatistica.
 
 ${apostasOntem[0].jogo} · ${placar}
-${apostasOntem[0].mercado} · Odd ${apostasOntem[0].odd.toFixed(2)}
+Mercado: ${apostasOntem[0].mercado}
 
-Nosso modelo estimou ${Math.round((1/apostasOntem[0].odd + apostasOntem[0].edge)*100)}% de chance. Nao acertou dessa vez.
+Modelo estimou ${probPct}% de probabilidade. Dessa vez nao se confirmou.
 
-Isso faz parte. Value bet nao e sobre acertar sempre — e sobre ter vantagem matematica no longo prazo.
+Analise de dados nao e certeza — e identificar vantagem matematica no longo prazo. A consistencia esta nos numeros acumulados.
 
-Mesmo assim, ultimos 30 dias: ${acertos}/${total} certas · ${taxa}% de aproveitamento.
+Ultimos 30 dias: ${acertos}/${total} corretas · ${taxa}% de aproveitamento.
 
-Apostador amador entra em panico no vermelho.
-Apostador profissional sabe que variancia existe e continua com o metodo.
+Acompanha o historico completo. Link na bio.
 
-Link na bio para entender como funciona.
-
-#apostasesportivas #futebol #valuebets #metodo #brasileirao #gollucrativo #tipster #apostasinteligentes #bankrollmanagement #betbrasil`
+#futebol #analiseesportiva #inteligenciaartificial #brasileirao #estatisticas #gollucrativo #dadosesportivos #futebolanalitico #metodo`
   }
 }
 

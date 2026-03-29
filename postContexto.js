@@ -8,7 +8,7 @@ const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 
 async function gerarTextoComClaude(jogo) {
   try {
-    const prompt = `Voce e um especialista em futebol e apostas esportivas brasileiro.
+    const prompt = `Voce e um especialista em futebol e analise estatistica brasileiro.
 Gere um post curto e envolvente para o Instagram sobre esse jogo:
 
 Time casa: ${jogo.timeCasa}
@@ -18,11 +18,13 @@ Data: ${jogo.dataJogo}
 
 O post deve:
 - Ter no maximo 5 linhas
-- Criar curiosidade sobre o jogo sem revelar a aposta
+- Criar curiosidade sobre o confronto com base em dados e historico dos times
+- Mencionar algo relevante sobre o momento dos clubes, confrontos anteriores ou estatisticas
 - Terminar com "Nossos assinantes ja sabem o que os dados dizem. Link na bio."
-- Tom confiante e direto
+- Tom analitico e direto, como um comentarista de dados esportivos
 - Sem emojis excessivos, no maximo 2
 - Em portugues brasileiro informal
+- NAO mencionar apostas, palpites, odds ou ganho financeiro de nenhum tipo
 
 Retorne APENAS o texto do post, sem aspas, sem explicacoes.`
 
@@ -60,8 +62,8 @@ function gerarHashtags(liga) {
     'Ligue 1': '#ligue1 #futebolfrances'
   }
 
-  const base = hashtagsPorLiga[liga] || '#futebol #apostasesportivas'
-  return base + ' #apostas #valuebets #gollucrativo #futebol #apostasesportivas #tipster'
+  const base = hashtagsPorLiga[liga] || '#futebol #analiseesportiva'
+  return base + ' #inteligenciaartificial #dadosesportivos #gollucrativo #futebol #estatisticas #futebolanalitico'
 }
 
 async function gerarImagemContexto(jogo) {
@@ -118,11 +120,11 @@ async function gerarImagemContexto(jogo) {
   ctx.fillStyle = '#e94560'
   ctx.fillRect(70, 140, 940, 2)
 
-  // Label JOGO DO DIA
+  // Label ANALISE DO DIA (removido JOGO DO DIA para ser mais neutro)
   ctx.fillStyle = '#555566'
   ctx.font = 'bold 20px Arial'
   ctx.textAlign = 'center'
-  ctx.fillText('JOGO DO DIA', 540, 210)
+  ctx.fillText('ANALISE DO DIA', 540, 210)
 
   // VS central
   const maxLen = 18
@@ -141,7 +143,7 @@ async function gerarImagemContexto(jogo) {
   ctx.font = 'bold 72px Arial'
   ctx.fillText(foraNome, 540, 470)
 
-  // Data e horario
+  // Data
   const dataFormatada = new Date(jogo.dataJogo + 'T12:00:00').toLocaleDateString('pt-BR', {
     weekday: 'long', day: '2-digit', month: 'long'
   })
@@ -194,7 +196,7 @@ async function gerarImagemContexto(jogo) {
 
   ctx.fillStyle = '#333344'
   ctx.font = '20px Arial'
-  ctx.fillText('gollucrativo · apostas com metodo', 540, 975)
+  ctx.fillText('gollucrativo · analise estatistica de futebol', 540, 975)
 
   ctx.textAlign = 'left'
 
