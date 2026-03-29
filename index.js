@@ -565,8 +565,22 @@ function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno, performan
 
   const secaoResultado = turno === 'manha' ? 'RESULTADO DE ONTEM\n' + resultadoOntem + '\n\n---\n' : ''
 
+  // Qualidade do dia baseada no edge medio
+  const edgeMedio = apostas.reduce(function(sum, a) { return sum + a.edge }, 0) / apostas.length
+  const edgePct = Math.round(edgeMedio * 100)
+  let qualidadeDia
+  if (edgePct >= 10) {
+    qualidadeDia = '🟢 Dia com boa vantagem estatistica (' + edgePct + '% de edge medio)'
+  } else if (edgePct >= 7) {
+    qualidadeDia = '🟡 Vantagem moderada hoje (' + edgePct + '% de edge medio) — analise com atencao'
+  } else {
+    qualidadeDia = '🔴 Vantagem abaixo da media hoje (' + edgePct + '% de edge medio) — avalie com cautela'
+  }
+
   return [
     turnoLabel + ' - ' + hoje,
+    '---', '',
+    qualidadeDia, '',
     '---', '',
     secaoResultado,
     'APOSTA DESTAQUE', '',
