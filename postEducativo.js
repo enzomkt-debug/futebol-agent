@@ -57,24 +57,12 @@ async function gerarTextoEducativo(jogos) {
 Esses sao os jogos mais relevantes dos proximos dias:
 ${listaJogos}
 
-Escolha o confronto mais interessante e crie um post para o Instagram que:
-- Tenha no maximo 6 linhas
-- Seja informativo e curioso sobre o confronto ou sobre um dos times
-- Pode falar sobre historico entre os times, momento atual, estatisticas interessantes, recordes
-- Termine com "Acompanha a analise completa no nosso Telegram. Link na bio."
-- Tom envolvente, como um comentarista esportivo apaixonado
-- Em portugues brasileiro informal
-- NAO mencione apostas, palpites, odds ou ganho financeiro
-- NAO invente estatisticas — fique em observacoes gerais e contextuais
+Escolha o confronto mais interessante e retorne EXATAMENTE neste formato, sem texto adicional:
 
-Retorne APENAS:
-1. O texto do post
-2. Uma linha separada com: QUERY_IMAGEM: [3 palavras em ingles para buscar no Unsplash, ex: "football stadium crowd"]
-
-Formato:
-[texto do post]
----
-QUERY_IMAGEM: [query]`
+HEADLINE: [frase de impacto curta em maiusculas, maximo 4 palavras, ex: CHOQUE DE GIGANTES]
+CONFRONTO: [Time Casa x Time Fora - Data, ex: Flamengo x Palmeiras - 03/04]
+TEXTO: [post completo para legenda do Instagram, maximo 5 linhas, curioso e informativo sobre o confronto, termine com "Acompanha a analise completa no nosso Telegram. Link na bio.", sem apostas, sem inventar estatisticas]
+QUERY_IMAGEM: [3 palavras em ingles para foto no Unsplash, ex: football stadium crowd]`
       }]
     }, {
       headers: {
@@ -85,6 +73,7 @@ QUERY_IMAGEM: [query]`
     })
 
     const resposta = res.data.content[0].text.trim()
+    console.log('=== RESPOSTA CLAUDE ===\n' + resposta + '\n===')
     const linhasResposta = resposta.split('\n')
     
     let headline = 'FUTEBOL & DADOS'
