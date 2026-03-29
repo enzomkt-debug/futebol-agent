@@ -729,6 +729,7 @@ async function runAgent(turno) {
 }
 
 const { postarContextoJogo } = require('./postContexto')
+const { postarConteudoEducativo } = require('./postEducativo')
 
 async function runContexto() {
   console.log('\n[' + new Date().toISOString() + '] Post de contexto iniciado')
@@ -746,13 +747,30 @@ async function runContexto() {
   console.log('[' + new Date().toISOString() + '] Post de contexto finalizado')
 }
 
+
+async function runEducativo() {
+  console.log('\n[' + new Date().toISOString() + '] Post educativo iniciado')
+  try {
+    const jogos = await buscarJogosProximosDias()
+    if (!jogos.length) {
+      console.log('Nenhum jogo para post educativo.')
+      return
+    }
+    await postarConteudoEducativo(jogos)
+  } catch (err) {
+    console.error('Erro no post educativo:', err.message)
+  }
+  console.log('[' + new Date().toISOString() + '] Post educativo finalizado')
+}
+
 // ─── AGENDAMENTOS ───
 cron.schedule('0 8 * * *',        function() { runAgent('manha') },     { timezone: 'America/Sao_Paulo' })
 cron.schedule('0 12 * * *',       function() { runContexto() },         { timezone: 'America/Sao_Paulo' })
 cron.schedule('0 13 * * *',       function() { runAgent('tarde') },     { timezone: 'America/Sao_Paulo' })
 cron.schedule('0 19 * * *',       function() { runAgent('noite') },     { timezone: 'America/Sao_Paulo' })
+cron.schedule('0 15 * * *',       function() { runEducativo() },        { timezone: 'America/Sao_Paulo' })
 cron.schedule('*/30 14-23 * * *', function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
 cron.schedule('*/30 0-2 * * *',  function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
 
-console.log('Agente agendado: 8h, 12h, 13h e 19h (horario de Brasilia)')
+console.log('Agente agendado: 8h, 12h, 13h, 15h e 19h (horario de Brasilia)')
 console.log('Monitor de resultados: a cada 30 minutos entre 14h e 02h')
