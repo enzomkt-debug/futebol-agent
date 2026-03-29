@@ -737,6 +737,7 @@ cron.schedule('0 12 * * *',       function() { runContexto() },         { timezo
 cron.schedule('0 13 * * *',       function() { runAgent('tarde') },     { timezone: 'America/Sao_Paulo' })
 cron.schedule('0 19 * * *',       function() { runAgent('noite') },     { timezone: 'America/Sao_Paulo' })
 cron.schedule('*/30 14-23 * * *', function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
+cron.schedule('*/30 0-2 * * *',  function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
 
 console.log('Agente agendado: 8h, 12h, 13h e 19h (horario de Brasilia)')
-console.log('Monitor de resultados: a cada 30 minutos entre 14h e 00h')
+console.log('Monitor de resultados: a cada 30 minutos entre 14h e 02h')
