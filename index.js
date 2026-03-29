@@ -11,6 +11,7 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
 const API_BASE = 'https://api.football-data.org/v4'
 
 const APOSTAS_FILE = './apostas_ontem.json'
+const NOTIFICADOS_FILE = './resultados_notificados.json'
 
 // ─── SUPABASE ───
 const supabase = createClient(
@@ -47,7 +48,6 @@ async function salvarResultadosSupabase(apostasOntem, resultados) {
       const resultado = resultados[i]
       if (!resultado) continue
 
-      // Busca o ID da aposta no banco pelo match_id
       const { data } = await supabase
         .from('apostas')
         .select('id')
@@ -147,6 +147,25 @@ const DICAS = [
   'Diversifique as apostas entre ligas diferentes para reduzir o risco.'
 ]
 
+// ─── CONTROLE DE NOTIFICADOS ───
+
+function carregarNotificados() {
+  try {
+    if (!fs.existsSync(NOTIFICADOS_FILE)) return {}
+    return JSON.parse(fs.readFileSync(NOTIFICADOS_FILE, 'utf8'))
+  } catch (err) {
+    return {}
+  }
+}
+
+function salvarNotificados(notificados) {
+  try {
+    fs.writeFileSync(NOTIFICADOS_FILE, JSON.stringify(notificados, null, 2))
+  } catch (err) {
+    console.error('Erro ao salvar notificados:', err.message)
+  }
+}
+
 // ─── RESULTADO DE ONTEM ───
 
 function salvarApostasDeHoje(apostas) {
@@ -202,7 +221,7 @@ async function gerarResultadoOntem() {
 
   const acertou = verificarAcerto(destaque, resultado)
   const placar = resultado.golsCasa + ' x ' + resultado.golsFora
-  const status = acertou ? 'VERDE' : 'VERMELHO'
+  const status = acertou ? 'VERDE ✅' : 'VERMELHO ❌'
 
   let acertos = 0
   let total = 0
@@ -217,6 +236,64 @@ async function gerarResultadoOntem() {
   resumo += 'Tip: ' + destaque.mercado + ' - ' + status
   if (total > 1) resumo += '\nDia anterior: ' + acertos + ' de ' + total + ' certas'
   return resumo
+}
+
+// ─── MONITORAMENTO DE RESULTADOS EM TEMPO REAL ───
+
+async function monitorarResultados() {
+  const apostas = carregarApostasDeOntem()
+  if (!apostas || !apostas.length) return
+
+  const notificados = carregarNotificados()
+  const hoje = new Date().toISOString().split('T')[0]
+
+  // Limpa notificados de dias anteriores
+  for (const key of Object.keys(notificados)) {
+    if (!key.startsWith(hoje)) delete notificados[key]
+  }
+
+  let algumNovo = false
+
+  for (const aposta of apostas) {
+    const chave = hoje + '_' + aposta.matchId
+    if (notificados[chave]) continue // já notificou
+
+    const resultado = await buscarResultadoPartida(aposta.matchId)
+    if (!resultado) continue // jogo ainda não terminou
+
+    // Jogo terminou e ainda não notificamos!
+    const acertou = verificarAcerto(aposta, resultado)
+    const placar = resultado.golsCasa + ' x ' + resultado.golsFora
+    const emoji = acertou ? '✅' : '❌'
+    const status = acertou ? 'VERDE' : 'VERMELHO'
+
+    const mensagem = [
+      emoji + ' RESULTADO — ' + aposta.jogo,
+      '',
+      'Placar: ' + placar,
+      'Tip: ' + aposta.mercado + ' → ' + status,
+      '',
+      acertou
+        ? 'Analise confirmada! Nosso modelo acertou.'
+        : 'Nao confirmou dessa vez. Variancia faz parte da analise estatistica.',
+      '',
+      '---',
+      'Acompanhe o historico completo no grupo.'
+    ].join('\n')
+
+    await enviarTelegram(mensagem)
+
+    // Salva no Supabase
+    await salvarResultadosSupabase([aposta], [resultado])
+
+    // Marca como notificado
+    notificados[chave] = true
+    algumNovo = true
+
+    console.log('Resultado notificado: ' + aposta.jogo + ' (' + placar + ') — ' + status)
+  }
+
+  if (algumNovo) salvarNotificados(notificados)
 }
 
 // ─── COLETA DE DADOS ───
@@ -342,7 +419,7 @@ async function buscarStats(timeCasaId, timeForaId) {
     return {
       casa: calcular(resCasa.data.matches || [], timeCasaId),
       fora: calcular(resFora.data.matches || [], timeForaId),
-      h2h: { mediaGols: 2.0, btts: 0.5 } // H2H simplificado
+      h2h: { mediaGols: 2.0, btts: 0.5 }
     }
   } catch (err) {
     return null
@@ -350,8 +427,6 @@ async function buscarStats(timeCasaId, timeForaId) {
 }
 
 function calcularEdge(stats, jogo) {
-  // Odds simuladas baseadas na probabilidade estimada
-  // No MVP sem API de odds, usamos odds médias de mercado
   const mediaPonderada = ((stats.casa.mediaGols + stats.fora.mediaGols) / 2) * 0.7 + stats.h2h.mediaGols * 0.3
 
   let probOver25
@@ -362,7 +437,6 @@ function calcularEdge(stats, jogo) {
 
   const probBTTS = ((stats.casa.btts + stats.fora.btts) / 2) * 0.6 + stats.h2h.btts * 0.4
 
-  // Odds típicas de mercado para comparação
   const oddOver25 = mediaPonderada >= 2.5 ? 1.80 : 2.10
   const oddUnder25 = mediaPonderada >= 2.5 ? 2.00 : 1.75
   const oddBTTS = probBTTS >= 0.55 ? 1.75 : 2.00
@@ -388,12 +462,10 @@ function formatarData(dataStr) {
 
 function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno, performance) {
   const hoje = new Date().toLocaleDateString('pt-BR')
-  const emojis = ['1.', '2.', '3.', '4.', '5.']
   const dica = DICAS[Math.floor(Math.random() * DICAS.length)]
   const hojeStr = new Date().toISOString().split('T')[0]
   const turnoLabel = turno === 'manha' ? 'ANALISE DA MANHA' : turno === 'tarde' ? 'ANALISE DA TARDE' : 'ANALISE DA NOITE'
 
-  // Seção de performance (só na manhã se tiver dados)
   let secaoPerformance = ''
   if (turno === 'manha' && performance) {
     const emoji = performance.taxa >= 60 ? '🔥' : performance.taxa >= 50 ? '📊' : '📉'
@@ -401,7 +473,6 @@ function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno, performan
     secaoPerformance += performance.acertos + '/' + performance.total + ' certas | Taxa: ' + performance.taxa + '% | ROI: ' + (performance.roiPct >= 0 ? '+' : '') + performance.roiPct + '%\n\n---\n'
   }
 
-  // Agrupa apostas por jogo para mostrar múltiplos mercados
   const jogosMapa = {}
   apostas.forEach(function(a) {
     if (!jogosMapa[a.jogo]) jogosMapa[a.jogo] = []
@@ -419,12 +490,9 @@ function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno, performan
     const oddImplicita = Math.round((1 / principal.odd) * 100)
 
     listaApostas += contador + '. ' + principal.jogo + ' (' + principal.liga + ') — ' + dataLabel + '\n'
-
-    // Melhor valor em destaque
     listaApostas += '   MELHOR VALOR: ' + principal.mercado + ' | Odd ' + principal.odd.toFixed(2) + '\n'
     listaApostas += '   Nosso modelo: ' + probPct + '% de chance | Casa acha: ' + oddImplicita + '%\n'
 
-    // Outros mercados do mesmo jogo
     if (mercados.length > 1) {
       listaApostas += '   OUTRAS OPCOES:\n'
       mercados.slice(1).forEach(function(m) {
@@ -557,15 +625,19 @@ async function runAgent(turno) {
     const top5 = todasApostas.slice(0, 5)
     const jogoParaEvitar = jogosComBaixoEdge[0] || null
 
-    if (turno === 'manha') salvarApostasDeHoje(top5)
+    if (turno === 'manha') {
+      salvarApostasDeHoje(top5)
+      await salvarApostasSupabase(top5, turno)
+    }
 
     console.log(top5.length + ' value bets encontrados')
 
-    const mensagem = gerarMensagem(top5, jogoParaEvitar, resultadoOntem, turno)
+    const performance = await buscarPerformance()
+    const mensagem = gerarMensagem(top5, jogoParaEvitar, resultadoOntem, turno, performance)
     console.log('\n--- MENSAGEM ---\n' + mensagem + '\n---')
 
     await enviarTelegram(mensagem)
-    // Para o Instagram, busca resultados reais das apostas de ontem
+
     if (turno === 'manha') {
       const apostasOntem = carregarApostasDeOntem()
       const resultadosReais = []
@@ -574,6 +646,8 @@ async function runAgent(turno) {
           const res = await buscarResultadoPartida(a.matchId)
           resultadosReais.push(res)
         }
+        // ✅ CORRIGIDO: salva resultados no Supabase
+        await salvarResultadosSupabase(apostasOntem, resultadosReais)
       }
       await postarInstagram(apostasOntem, resultadosReais, turno)
     }
@@ -596,7 +670,6 @@ async function runContexto() {
       console.log('Nenhum jogo para post de contexto.')
       return
     }
-    // Pega o jogo mais importante do dia (maior prioridade)
     const jogoDestaque = jogos[0]
     await postarContextoJogo(jogoDestaque)
   } catch (err) {
@@ -605,12 +678,16 @@ async function runContexto() {
   console.log('[' + new Date().toISOString() + '] Post de contexto finalizado')
 }
 
-cron.schedule('0 8 * * *',  function() { runAgent('manha') }, { timezone: 'America/Sao_Paulo' })
-cron.schedule('0 12 * * *', function() { runContexto() },     { timezone: 'America/Sao_Paulo' })
-cron.schedule('0 13 * * *', function() { runAgent('tarde') }, { timezone: 'America/Sao_Paulo' })
-cron.schedule('0 19 * * *', function() { runAgent('noite') }, { timezone: 'America/Sao_Paulo' })
+// ─── AGENDAMENTOS ───
+cron.schedule('0 8 * * *',   function() { runAgent('manha') },      { timezone: 'America/Sao_Paulo' })
+cron.schedule('0 12 * * *',  function() { runContexto() },          { timezone: 'America/Sao_Paulo' })
+cron.schedule('0 13 * * *',  function() { runAgent('tarde') },      { timezone: 'America/Sao_Paulo' })
+cron.schedule('0 19 * * *',  function() { runAgent('noite') },      { timezone: 'America/Sao_Paulo' })
+// ✅ NOVO: monitora resultados a cada 30 minutos entre 14h e 00h
+cron.schedule('*/30 14-23 * * *', function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
 
 console.log('Agente agendado: 8h, 12h, 13h e 19h (horario de Brasilia)')
+console.log('Monitor de resultados: a cada 30 minutos entre 14h e 00h')
 console.log('Executando turno da manha para teste...\n')
 
 runAgent('manha')
