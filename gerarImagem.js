@@ -1,8 +1,10 @@
-const { registerFont } = require('canvas')
 const { createCanvas } = require('canvas')
 const fs = require('fs')
 const path = require('path')
 const axios = require('axios')
+
+// Fonte compativel com Linux (Railway) e Windows
+const FONTE = process.platform === 'win32' ? 'Arial' : 'DejaVu Sans'
 
 function arredondarRetangulo(ctx, x, y, w, h, r) {
   ctx.beginPath()
@@ -89,11 +91,11 @@ async function gerarImagem(apostas, turno, resultados) {
 
   // Header — Logo
   ctx.fillStyle = COR_TEMA
-  ctx.font = 'bold 52px Arial'
+  ctx.font = 'bold 52px ' + FONTE
   ctx.fillText('GolLucrativo', 70, 88)
 
   ctx.fillStyle = '#444455'
-  ctx.font = '24px Arial'
+  ctx.font = '24px ' + FONTE
   ctx.fillText('@gol.lucrativo', 70, 122)
 
   // Data
@@ -101,7 +103,7 @@ async function gerarImagem(apostas, turno, resultados) {
   ontem.setDate(ontem.getDate() - 1)
   const dataStr = ontem.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
   ctx.fillStyle = '#555566'
-  ctx.font = '22px Arial'
+  ctx.font = '22px ' + FONTE
   ctx.textAlign = 'right'
   ctx.fillText(dataStr, 1010, 88)
   ctx.textAlign = 'left'
@@ -113,10 +115,10 @@ async function gerarImagem(apostas, turno, resultados) {
   if (!temResultado) {
     // Primeiro dia
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 52px Arial'
+    ctx.font = 'bold 52px ' + FONTE
     ctx.textAlign = 'center'
     ctx.fillText('Primeiro dia de operacao!', 540, 520)
-    ctx.font = '28px Arial'
+    ctx.font = '28px ' + FONTE
     ctx.fillStyle = '#888899'
     ctx.fillText('Acompanhe nossos resultados diarios', 540, 580)
     ctx.textAlign = 'left'
@@ -124,6 +126,7 @@ async function gerarImagem(apostas, turno, resultados) {
   } else if (isVerde) {
     // ─── TEMPLATE VERDE ───
 
+    // Simbolo grande
     ctx.fillStyle = '#00c48c'
     ctx.globalAlpha = 0.08
     ctx.beginPath()
@@ -132,26 +135,26 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.globalAlpha = 1
 
     ctx.fillStyle = '#00c48c'
-    ctx.font = 'bold 160px Arial'
+    ctx.font = 'bold 160px ' + FONTE
     ctx.textAlign = 'center'
     ctx.fillText('✓', 540, 370)
 
-    ctx.font = 'bold 88px Arial'
-    ctx.fillText('ACERTOU', 540, 470)
+    ctx.font = 'bold 88px ' + FONTE
+    ctx.fillText('VERDE', 540, 470)
 
     // Jogo destaque
     const jogoNome = apostas[0].jogo.length > 32 ? apostas[0].jogo.substring(0, 32) + '...' : apostas[0].jogo
     ctx.fillStyle = '#888899'
-    ctx.font = '26px Arial'
+    ctx.font = '26px ' + FONTE
     ctx.fillText(jogoNome, 540, 530)
 
     const placar = destaqueResultado.golsCasa + ' x ' + destaqueResultado.golsFora
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 32px Arial'
+    ctx.font = 'bold 32px ' + FONTE
     ctx.fillText(placar, 540, 575)
     ctx.textAlign = 'left'
 
-    // Card da analise
+    // Card da aposta
     ctx.fillStyle = COR_CARD
     arredondarRetangulo(ctx, 70, 605, 940, 130, 16)
     ctx.fill()
@@ -160,20 +163,19 @@ async function gerarImagem(apostas, turno, resultados) {
     arredondarRetangulo(ctx, 70, 605, 940, 130, 16)
     ctx.stroke()
 
-    const probPct = Math.round((1/apostas[0].odd + apostas[0].edge)*100)
-
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 24px Arial'
+    ctx.font = 'bold 24px ' + FONTE
     ctx.textAlign = 'center'
-    ctx.fillText('Mercado: ' + apostas[0].mercado, 540, 648)
+    ctx.fillText(apostas[0].mercado + ' · Odd ' + apostas[0].odd.toFixed(2), 540, 648)
 
+    const retorno = Math.round(100 * apostas[0].odd)
     ctx.fillStyle = '#00c48c'
-    ctx.font = 'bold 28px Arial'
-    ctx.fillText('Probabilidade estimada: ' + probPct + '% · Confirmado', 540, 690)
+    ctx.font = 'bold 28px ' + FONTE
+    ctx.fillText('R$ 100 apostados → R$ ' + retorno + ' recebidos', 540, 690)
 
     ctx.fillStyle = '#888899'
-    ctx.font = '22px Arial'
-    ctx.fillText('Analise enviada as 8h · Baseada em dados estatisticos', 540, 720)
+    ctx.font = '22px ' + FONTE
+    ctx.fillText('Enviado as 8h · ' + Math.round((1/apostas[0].odd + apostas[0].edge)*100) + '% de probabilidade real', 540, 720)
     ctx.textAlign = 'left'
 
     // Performance
@@ -186,12 +188,12 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.stroke()
 
     ctx.fillStyle = '#888899'
-    ctx.font = '22px Arial'
+    ctx.font = '22px ' + FONTE
     ctx.textAlign = 'center'
     ctx.fillText('Ultimos 30 dias:', 540, 785)
     ctx.fillStyle = '#00c48c'
-    ctx.font = 'bold 26px Arial'
-    ctx.fillText(acertos + '/' + total + ' corretas · Taxa: ' + taxa + '%', 540, 815)
+    ctx.font = 'bold 26px ' + FONTE
+    ctx.fillText(acertos + '/' + total + ' certas · Taxa: ' + taxa + '%', 540, 815)
     ctx.textAlign = 'left'
 
     // CTA verde
@@ -199,15 +201,15 @@ async function gerarImagem(apostas, turno, resultados) {
     arredondarRetangulo(ctx, 180, 860, 720, 75, 38)
     ctx.fill()
     ctx.fillStyle = '#0a1e14'
-    ctx.font = 'bold 26px Arial'
+    ctx.font = 'bold 26px ' + FONTE
     ctx.textAlign = 'center'
     ctx.fillText('ASSINAR — LINK NA BIO', 540, 905)
 
     ctx.fillStyle = '#555566'
-    ctx.font = '22px Arial'
-    ctx.fillText('Quem acompanha o grupo sabia desde as 8h.', 540, 970)
+    ctx.font = '22px ' + FONTE
+    ctx.fillText('Nossos assinantes sabiam desde as 8h.', 540, 970)
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 24px Arial'
+    ctx.font = 'bold 24px ' + FONTE
     ctx.fillText('Amanha tem mais. Nao fique de fora.', 540, 1005)
     ctx.textAlign = 'left'
 
@@ -222,21 +224,21 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.globalAlpha = 1
 
     ctx.fillStyle = '#e94560'
-    ctx.font = 'bold 130px Arial'
+    ctx.font = 'bold 130px ' + FONTE
     ctx.textAlign = 'center'
     ctx.fillText('✗', 540, 370)
 
-    ctx.font = 'bold 80px Arial'
-    ctx.fillText('NAO CONFIRMOU', 540, 460)
+    ctx.font = 'bold 80px ' + FONTE
+    ctx.fillText('VERMELHO', 540, 460)
 
     ctx.fillStyle = '#888899'
-    ctx.font = '26px Arial'
+    ctx.font = '26px ' + FONTE
     const jogoNome = apostas[0].jogo.length > 32 ? apostas[0].jogo.substring(0, 32) + '...' : apostas[0].jogo
     ctx.fillText(jogoNome, 540, 520)
 
     const placar = destaqueResultado.golsCasa + ' x ' + destaqueResultado.golsFora
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 32px Arial'
+    ctx.font = 'bold 32px ' + FONTE
     ctx.fillText(placar, 540, 565)
     ctx.textAlign = 'left'
 
@@ -251,21 +253,21 @@ async function gerarImagem(apostas, turno, resultados) {
 
     const probPct = Math.round((1/apostas[0].odd + apostas[0].edge)*100)
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 24px Arial'
+    ctx.font = 'bold 24px ' + FONTE
     ctx.textAlign = 'center'
-    ctx.fillText('Mercado: ' + apostas[0].mercado, 540, 635)
+    ctx.fillText(apostas[0].mercado + ' · Odd ' + apostas[0].odd.toFixed(2), 540, 635)
     ctx.fillStyle = '#888899'
-    ctx.font = '22px Arial'
-    ctx.fillText('Modelo estimou ' + probPct + '% de probabilidade.', 540, 668)
+    ctx.font = '22px ' + FONTE
+    ctx.fillText('Modelo estimou ' + probPct + '% de chance.', 540, 668)
     ctx.fillStyle = '#ccccdd'
-    ctx.font = '22px Arial'
-    ctx.fillText('Isso significa que ' + (100 - probPct) + '% das vezes nao se confirma.', 540, 700)
+    ctx.font = '22px ' + FONTE
+    ctx.fillText('Isso significa que ' + (100 - probPct) + '% das vezes vai errar.', 540, 700)
     ctx.fillStyle = '#e94560'
-    ctx.font = 'bold 22px Arial'
-    ctx.fillText('Variancia estatistica faz parte da analise.', 540, 732)
+    ctx.font = 'bold 22px ' + FONTE
+    ctx.fillText('Ontem foi uma dessas vezes. Variancia faz parte.', 540, 732)
     ctx.textAlign = 'left'
 
-    // Performance
+    // Performance — mostra que no longo prazo funciona
     ctx.fillStyle = COR_CARD
     arredondarRetangulo(ctx, 70, 758, 940, 80, 14)
     ctx.fill()
@@ -275,12 +277,12 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.stroke()
 
     ctx.fillStyle = '#888899'
-    ctx.font = '22px Arial'
+    ctx.font = '22px ' + FONTE
     ctx.textAlign = 'center'
-    ctx.fillText('Historico dos ultimos 30 dias:', 540, 788)
+    ctx.fillText('Mesmo assim, ultimos 30 dias:', 540, 788)
     ctx.fillStyle = '#00c48c'
-    ctx.font = 'bold 26px Arial'
-    ctx.fillText(acertos + '/' + total + ' corretas · Taxa: ' + taxa + '% · Metodo consistente', 540, 822)
+    ctx.font = 'bold 26px ' + FONTE
+    ctx.fillText(acertos + '/' + total + ' certas · Taxa: ' + taxa + '% · Metodo funciona', 540, 822)
     ctx.textAlign = 'left'
 
     // CTA vermelho
@@ -288,16 +290,16 @@ async function gerarImagem(apostas, turno, resultados) {
     arredondarRetangulo(ctx, 180, 868, 720, 75, 38)
     ctx.fill()
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 24px Arial'
+    ctx.font = 'bold 24px ' + FONTE
     ctx.textAlign = 'center'
     ctx.fillText('ASSINAR — LINK NA BIO', 540, 913)
 
     ctx.fillStyle = '#888899'
-    ctx.font = '22px Arial'
-    ctx.fillText('Variancia faz parte da analise estatistica.', 540, 975)
+    ctx.font = '22px ' + FONTE
+    ctx.fillText('Apostador profissional sabe lidar com variancia.', 540, 975)
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 22px Arial'
-    ctx.fillText('O historico de 30 dias fala por si so.', 540, 1010)
+    ctx.font = 'bold 22px ' + FONTE
+    ctx.fillText('Nossos assinantes continuam com o metodo.', 540, 1010)
     ctx.textAlign = 'left'
   }
 
@@ -305,9 +307,9 @@ async function gerarImagem(apostas, turno, resultados) {
   ctx.fillStyle = 'rgba(255,255,255,0.04)'
   ctx.fillRect(0, 1042, width, 38)
   ctx.fillStyle = COR_TEMA
-  ctx.font = 'bold 20px Arial'
+  ctx.font = 'bold 20px ' + FONTE
   ctx.textAlign = 'center'
-  ctx.fillText('gollucrativo.com.br · analise estatistica de futebol · baseado em dados', 540, 1067)
+  ctx.fillText('gollucrativo.com.br · analise baseada em dados · nao e palpite', 540, 1067)
   ctx.textAlign = 'left'
 
   // Barra rodape
