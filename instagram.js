@@ -18,7 +18,7 @@ function gerarCaption(apostasOntem, resultados) {
   const hoje = new Date().toLocaleDateString('pt-BR')
 
   if (!apostasOntem || !apostasOntem.length || !resultados || !resultados.length) {
-    return `⚽ GolLucrativo — ${hoje}
+    return `⚽ Gol Match BR — ${hoje}
 
 Primeiro dia de operacao! A partir de amanha voce acompanha os resultados das nossas analises diarias.
 
@@ -26,7 +26,7 @@ Brasileirao, Champions League, Premier League, Libertadores e mais 9 ligas anali
 
 Analise completa todo dia as 8h no Telegram. Link na bio para acessar.
 
-#futebol #analiseesportiva #inteligenciaartificial #brasileirao #championsleague #gollucrativo #dadosesportivos #futebolanalitico #estatisticas`
+#futebol #analiseesportiva #inteligenciaartificial #brasileirao #championsleague #golmatchbr #dadosesportivos #futebolanalitico #estatisticas`
   }
 
   let acertos = 0
@@ -60,7 +60,7 @@ Ultimos 30 dias: ${acertos}/${total} analises corretas · ${taxa}% de aproveitam
 
 Quer receber antes? Link na bio.
 
-#futebol #analiseesportiva #inteligenciaartificial #brasileirao #championsleague #libertadores #estatisticas #gollucrativo #dadosesportivos #futebolanalitico`
+#futebol #analiseesportiva #inteligenciaartificial #brasileirao #championsleague #libertadores #estatisticas #golmatchbr #dadosesportivos #futebolanalitico`
   } else {
     return `📊 NAO CONFIRMOU — faz parte da analise estatistica.
 
@@ -75,7 +75,7 @@ Ultimos 30 dias: ${acertos}/${total} corretas · ${taxa}% de aproveitamento.
 
 Acompanha o historico completo. Link na bio.
 
-#futebol #analiseesportiva #inteligenciaartificial #brasileirao #estatisticas #gollucrativo #dadosesportivos #futebolanalitico #metodo`
+#futebol #analiseesportiva #inteligenciaartificial #brasileirao #estatisticas #golmatchbr #dadosesportivos #futebolanalitico #metodo`
   }
 }
 

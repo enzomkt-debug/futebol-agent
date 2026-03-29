@@ -63,7 +63,7 @@ function gerarHashtags(liga) {
   }
 
   const base = hashtagsPorLiga[liga] || '#futebol #analiseesportiva'
-  return base + ' #inteligenciaartificial #dadosesportivos #gollucrativo #futebol #estatisticas #futebolanalitico'
+  return base + ' #inteligenciaartificial #dadosesportivos #golmatchbr #futebol #estatisticas #futebolanalitico'
 }
 
 async function gerarImagemContexto(jogo) {
@@ -102,11 +102,11 @@ async function gerarImagemContexto(jogo) {
   // Header
   ctx.fillStyle = '#e94560'
   ctx.font = 'bold 48px Arial'
-  ctx.fillText('GolLucrativo', 70, 85)
+  ctx.fillText('Gol Match BR', 70, 85)
 
   ctx.fillStyle = '#444455'
   ctx.font = '22px Arial'
-  ctx.fillText('@gol.lucrativo', 70, 118)
+  ctx.fillText('@golmatchbr', 70, 118)
 
   // Tag da liga
   const ligaCurta = jogo.liga.length > 25 ? jogo.liga.substring(0, 25) + '...' : jogo.liga
@@ -196,7 +196,7 @@ async function gerarImagemContexto(jogo) {
 
   ctx.fillStyle = '#333344'
   ctx.font = '20px Arial'
-  ctx.fillText('gollucrativo · analise estatistica de futebol', 540, 975)
+  ctx.fillText('golmatchbr · analise estatistica de futebol', 540, 975)
 
   ctx.textAlign = 'left'
 
