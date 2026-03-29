@@ -260,7 +260,8 @@ async function monitorarResultados() {
   if (!apostas || !apostas.length) return
 
   const notificados = carregarNotificados()
-  const hoje = new Date().toISOString().split('T')[0]
+  // Data em horário de Brasília para evitar erro na virada da meia-noite
+  const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 
   for (const key of Object.keys(notificados)) {
     if (!key.startsWith(hoje)) delete notificados[key]
@@ -626,7 +627,8 @@ async function runAgent(turno) {
       jogos = await buscarJogosHoje()
       const horaCorte = turno === 'tarde' ? 14 : 18
       jogos = jogos.filter(function(j) {
-        const hora = new Date(j.horario).getHours()
+        // Converte horário do jogo para Brasília antes de comparar
+        const hora = parseInt(new Date(j.horario).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false }))
         return hora >= horaCorte
       })
     }
@@ -679,10 +681,9 @@ async function runAgent(turno) {
     const top5 = todasApostas.slice(0, 5)
     const jogoParaEvitar = jogosComBaixoEdge[0] || null
 
-    if (turno === 'manha') {
-      salvarApostasDeHoje(top5)
-      await salvarApostasSupabase(top5, turno)
-    }
+    // Salva apostas em todos os turnos para o monitor conseguir rastrear
+    salvarApostasDeHoje(top5)
+    await salvarApostasSupabase(top5, turno)
 
     console.log(top5.length + ' value bets encontrados')
 
