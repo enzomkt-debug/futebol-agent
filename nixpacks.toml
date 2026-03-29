@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs", "cairo", "pango", "libpng", "libjpeg", "giflib", "librsvg", "fontconfig", "dejavu_fonts", "freetype"]
 
 [phases.install]
-cmds = ["npm install", "npm rebuild canvas"]
+cmds = ["npm install", "npm rebuild canvas", "fc-cache -fv"]
 
 [start]
 cmd = "node index.js"
