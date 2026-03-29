@@ -19,6 +19,24 @@ const supabase = createClient(
   process.env.SUPABASE_KEY
 )
 
+// ─── RATE LIMITER ───
+// football-data.org free tier: 10 req/min → aguarda 6.5s entre requests
+let ultimaRequisicao = 0
+async function apiFootball(url, params) {
+  const agora = Date.now()
+  const espera = ultimaRequisicao + 6500 - agora
+  if (espera > 0) await new Promise(r => setTimeout(r, espera))
+  ultimaRequisicao = Date.now()
+
+  const res = await axios.get(API_BASE + url, {
+    headers: { 'X-Auth-Token': API_FOOTBALL_KEY },
+    params
+  })
+  return res.data
+}
+
+// ─── SUPABASE ───
+
 async function salvarApostasSupabase(apostas, turno) {
   try {
     const registros = apostas.map(function(a) {
@@ -117,7 +135,7 @@ async function buscarPerformance() {
   }
 }
 
-// ─── LIGAS PRIORIZADAS (football-data.org IDs) ───
+// ─── LIGAS PRIORIZADAS ───
 const LIGAS_PRIORIDADE = {
   2013: { prioridade: 1, nome: 'Brasileirao Serie A' },
   2152: { prioridade: 1, nome: 'Copa Libertadores' },
@@ -166,7 +184,7 @@ function salvarNotificados(notificados) {
   }
 }
 
-// ─── RESULTADO DE ONTEM ───
+// ─── APOSTAS ───
 
 function salvarApostasDeHoje(apostas) {
   try {
@@ -188,14 +206,11 @@ function carregarApostasDeOntem() {
 
 async function buscarResultadoPartida(matchId) {
   try {
-    const res = await axios.get(API_BASE + '/matches/' + matchId, {
-      headers: { 'X-Auth-Token': API_FOOTBALL_KEY }
-    })
-    const match = res.data
-    if (match.status !== 'FINISHED') return null
+    const data = await apiFootball('/matches/' + matchId)
+    if (data.status !== 'FINISHED') return null
     return {
-      golsCasa: match.score.fullTime.home,
-      golsFora: match.score.fullTime.away
+      golsCasa: data.score.fullTime.home,
+      golsFora: data.score.fullTime.away
     }
   } catch (err) {
     return null
@@ -238,7 +253,7 @@ async function gerarResultadoOntem() {
   return resumo
 }
 
-// ─── MONITORAMENTO DE RESULTADOS EM TEMPO REAL ───
+// ─── MONITORAMENTO EM TEMPO REAL ───
 
 async function monitorarResultados() {
   const apostas = carregarApostasDeOntem()
@@ -247,7 +262,6 @@ async function monitorarResultados() {
   const notificados = carregarNotificados()
   const hoje = new Date().toISOString().split('T')[0]
 
-  // Limpa notificados de dias anteriores
   for (const key of Object.keys(notificados)) {
     if (!key.startsWith(hoje)) delete notificados[key]
   }
@@ -256,12 +270,11 @@ async function monitorarResultados() {
 
   for (const aposta of apostas) {
     const chave = hoje + '_' + aposta.matchId
-    if (notificados[chave]) continue // já notificou
+    if (notificados[chave]) continue
 
     const resultado = await buscarResultadoPartida(aposta.matchId)
-    if (!resultado) continue // jogo ainda não terminou
+    if (!resultado) continue
 
-    // Jogo terminou e ainda não notificamos!
     const acertou = verificarAcerto(aposta, resultado)
     const placar = resultado.golsCasa + ' x ' + resultado.golsFora
     const emoji = acertou ? '✅' : '❌'
@@ -282,17 +295,11 @@ async function monitorarResultados() {
     ].join('\n')
 
     await enviarTelegram(mensagem)
-
-    // Salva no Supabase
     await salvarResultadosSupabase([aposta], [resultado])
-
-    // Posta no Instagram assim que o jogo terminar
     await postarInstagram([aposta], [resultado], 'manha')
 
-    // Marca como notificado
     notificados[chave] = true
     algumNovo = true
-
     console.log('Resultado notificado: ' + aposta.jogo + ' (' + placar + ') — ' + status)
   }
 
@@ -303,7 +310,6 @@ async function monitorarResultados() {
 
 async function buscarJogosProximosDias() {
   console.log('Buscando jogos dos proximos 7 dias...')
-  console.log('Chave API: ' + (API_FOOTBALL_KEY ? 'OK' : 'NAO ENCONTRADA'))
 
   const hoje = new Date()
   const fim = new Date()
@@ -313,19 +319,14 @@ async function buscarJogosProximosDias() {
   const dateTo = fim.toISOString().split('T')[0]
 
   try {
-    const res = await axios.get(API_BASE + '/matches', {
-      headers: { 'X-Auth-Token': API_FOOTBALL_KEY },
-      params: { dateFrom, dateTo }
-    })
-
-    const matches = res.data.matches || []
+    const data = await apiFootball('/matches', { dateFrom, dateTo })
+    const matches = data.matches || []
     console.log(matches.length + ' partidas encontradas nos proximos 7 dias')
 
     const jogos = []
     for (const m of matches) {
       const liga = LIGAS_PRIORIDADE[m.competition.id]
       if (!liga) continue
-
       jogos.push({
         matchId: m.id,
         timeCasaId: m.homeTeam.id,
@@ -356,20 +357,13 @@ async function buscarJogosProximosDias() {
 
 async function buscarJogosHoje() {
   const hoje = new Date().toISOString().split('T')[0]
-
   try {
-    const res = await axios.get(API_BASE + '/matches', {
-      headers: { 'X-Auth-Token': API_FOOTBALL_KEY },
-      params: { dateFrom: hoje, dateTo: hoje }
-    })
-
-    const matches = res.data.matches || []
+    const data = await apiFootball('/matches', { dateFrom: hoje, dateTo: hoje })
+    const matches = data.matches || []
     const jogos = []
-
     for (const m of matches) {
       const liga = LIGAS_PRIORIDADE[m.competition.id]
       if (!liga) continue
-
       jogos.push({
         matchId: m.id,
         timeCasaId: m.homeTeam.id,
@@ -383,80 +377,131 @@ async function buscarJogosHoje() {
         horario: m.utcDate
       })
     }
-
     jogos.sort(function(a, b) { return a.prioridade - b.prioridade })
     return jogos
-
   } catch (err) {
     console.error('Erro ao buscar jogos de hoje:', err.message)
     return []
   }
 }
 
-async function buscarStats(timeCasaId, timeForaId) {
-  try {
-    const [resCasa, resFora] = await Promise.all([
-      axios.get(API_BASE + '/teams/' + timeCasaId + '/matches', {
-        headers: { 'X-Auth-Token': API_FOOTBALL_KEY },
-        params: { status: 'FINISHED', limit: 5 }
-      }),
-      axios.get(API_BASE + '/teams/' + timeForaId + '/matches', {
-        headers: { 'X-Auth-Token': API_FOOTBALL_KEY },
-        params: { status: 'FINISHED', limit: 5 }
-      })
-    ])
+// ─── H2H REAL ───
 
-    const calcular = function(matches, teamId) {
-      if (!matches.length) return { mediaGols: 1.5, btts: 0.5 }
+async function buscarH2H(matchId) {
+  try {
+    const data = await apiFootball('/matches/' + matchId + '/head2head', { limit: 10 })
+    const partidas = (data.matches || []).filter(m => m.status === 'FINISHED')
+
+    if (!partidas.length) return { mediaGols: 2.0, btts: 0.5 }
+
+    let totalGols = 0
+    let bttsCount = 0
+    for (const m of partidas) {
+      const gc = m.score.fullTime.home ?? 0
+      const gf = m.score.fullTime.away ?? 0
+      totalGols += gc + gf
+      if (gc > 0 && gf > 0) bttsCount++
+    }
+
+    return {
+      mediaGols: totalGols / partidas.length,
+      btts: bttsCount / partidas.length
+    }
+  } catch (err) {
+    console.log('H2H indisponivel para match ' + matchId + ', usando padrao')
+    return { mediaGols: 2.0, btts: 0.5 }
+  }
+}
+
+async function buscarStats(timeCasaId, timeForaId, matchId) {
+  try {
+    // Busca em sequência para respeitar rate limit
+    const resCasa = await apiFootball('/teams/' + timeCasaId + '/matches', { status: 'FINISHED', limit: 8 })
+    const resFora = await apiFootball('/teams/' + timeForaId + '/matches', { status: 'FINISHED', limit: 8 })
+    const h2h = await buscarH2H(matchId)
+
+    const calcular = function(matches) {
+      const finalizados = (matches || []).filter(m => m.status === 'FINISHED').slice(0, 6)
+      if (!finalizados.length) return { mediaGols: 1.5, btts: 0.5 }
       let totalGols = 0
       let bttsCount = 0
-      for (const m of matches) {
+      for (const m of finalizados) {
         const gc = m.score.fullTime.home ?? 0
         const gf = m.score.fullTime.away ?? 0
         totalGols += gc + gf
         if (gc > 0 && gf > 0) bttsCount++
       }
-      return { mediaGols: totalGols / matches.length, btts: bttsCount / matches.length }
+      return {
+        mediaGols: totalGols / finalizados.length,
+        btts: bttsCount / finalizados.length
+      }
     }
 
     return {
-      casa: calcular(resCasa.data.matches || [], timeCasaId),
-      fora: calcular(resFora.data.matches || [], timeForaId),
-      h2h: { mediaGols: 2.0, btts: 0.5 }
+      casa: calcular(resCasa.matches),
+      fora: calcular(resFora.matches),
+      h2h
     }
   } catch (err) {
     return null
   }
 }
 
-function calcularEdge(stats, jogo) {
-  const mediaPonderada = ((stats.casa.mediaGols + stats.fora.mediaGols) / 2) * 0.7 + stats.h2h.mediaGols * 0.3
+// ─── ODDS DINÂMICAS ───
 
-  let probOver25
-  if (mediaPonderada >= 2.8) probOver25 = 0.65
-  else if (mediaPonderada >= 2.3) probOver25 = 0.55
-  else if (mediaPonderada >= 1.8) probOver25 = 0.45
-  else probOver25 = 0.35
+function estimarOddsOver(mediaGols) {
+  if (mediaGols >= 3.2) return { over: 1.55, under: 2.35 }
+  if (mediaGols >= 2.8) return { over: 1.70, under: 2.10 }
+  if (mediaGols >= 2.5) return { over: 1.85, under: 1.95 }
+  if (mediaGols >= 2.2) return { over: 2.00, under: 1.80 }
+  if (mediaGols >= 1.8) return { over: 2.20, under: 1.65 }
+  return { over: 2.50, under: 1.55 }
+}
 
-  const probBTTS = ((stats.casa.btts + stats.fora.btts) / 2) * 0.6 + stats.h2h.btts * 0.4
+function estimarOddsBTTS(probBTTS) {
+  if (probBTTS >= 0.65) return 1.60
+  if (probBTTS >= 0.55) return 1.75
+  if (probBTTS >= 0.45) return 2.00
+  return 2.20
+}
 
-  const oddOver25 = mediaPonderada >= 2.5 ? 1.80 : 2.10
-  const oddUnder25 = mediaPonderada >= 2.5 ? 2.00 : 1.75
-  const oddBTTS = probBTTS >= 0.55 ? 1.75 : 2.00
+// ─── CÁLCULO DE EDGE COM POISSON ───
+
+function calcularEdge(stats) {
+  // Média ponderada: 60% forma recente + 40% H2H real
+  const mediaRecente = (stats.casa.mediaGols + stats.fora.mediaGols) / 2
+  const mediaPonderada = mediaRecente * 0.6 + stats.h2h.mediaGols * 0.4
+
+  // Distribuição de Poisson para Over/Under 2.5
+  const lambda = mediaPonderada
+  const p0 = Math.exp(-lambda)
+  const p1 = p0 * lambda
+  const p2 = p1 * lambda / 2
+  const probUnder25 = p0 + p1 + p2
+  const probOver25 = 1 - probUnder25
+
+  // BTTS ponderado
+  const bttsForma = (stats.casa.btts + stats.fora.btts) / 2
+  const probBTTS = bttsForma * 0.6 + stats.h2h.btts * 0.4
+
+  const oddsOver = estimarOddsOver(mediaPonderada)
+  const oddBTTS = estimarOddsBTTS(probBTTS)
 
   const bets = []
 
-  const edgeOver = probOver25 - (1 / oddOver25)
-  if (edgeOver >= 0.05) bets.push({ mercado: 'Mais de 2.5 gols', odd: oddOver25, edge: edgeOver })
+  const edgeOver = probOver25 - (1 / oddsOver.over)
+  if (edgeOver >= 0.05) bets.push({ mercado: 'Mais de 2.5 gols', odd: oddsOver.over, edge: edgeOver, prob: probOver25 })
 
-  const edgeUnder = (1 - probOver25) - (1 / oddUnder25)
-  if (edgeUnder >= 0.05) bets.push({ mercado: 'Menos de 2.5 gols', odd: oddUnder25, edge: edgeUnder })
+  const edgeUnder = probUnder25 - (1 / oddsOver.under)
+  if (edgeUnder >= 0.05) bets.push({ mercado: 'Menos de 2.5 gols', odd: oddsOver.under, edge: edgeUnder, prob: probUnder25 })
 
   const edgeBTTS = probBTTS - (1 / oddBTTS)
-  if (edgeBTTS >= 0.05) bets.push({ mercado: 'Ambas marcam: SIM', odd: oddBTTS, edge: edgeBTTS })
+  if (edgeBTTS >= 0.05) bets.push({ mercado: 'Ambas marcam: SIM', odd: oddBTTS, edge: edgeBTTS, prob: probBTTS })
 
   return bets
 }
+
+// ─── FORMATAÇÃO ───
 
 function formatarData(dataStr) {
   const d = new Date(dataStr + 'T12:00:00')
@@ -489,17 +534,17 @@ function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno, performan
   jogosUnicos.forEach(function(mercados) {
     const principal = mercados[0]
     const dataLabel = principal.dataJogo === hojeStr ? 'HOJE' : formatarData(principal.dataJogo)
-    const probPct = Math.round((1 / principal.odd + principal.edge) * 100)
+    const probPct = Math.round(principal.prob * 100)
     const oddImplicita = Math.round((1 / principal.odd) * 100)
 
     listaApostas += contador + '. ' + principal.jogo + ' (' + principal.liga + ') — ' + dataLabel + '\n'
     listaApostas += '   MELHOR VALOR: ' + principal.mercado + ' | Odd ' + principal.odd.toFixed(2) + '\n'
-    listaApostas += '   Nosso modelo: ' + probPct + '% de chance | Casa acha: ' + oddImplicita + '%\n'
+    listaApostas += '   Nosso modelo: ' + probPct + '% | Casa acha: ' + oddImplicita + '% | Edge: +' + Math.round(principal.edge * 100) + '%\n'
 
     if (mercados.length > 1) {
       listaApostas += '   OUTRAS OPCOES:\n'
       mercados.slice(1).forEach(function(m) {
-        listaApostas += '   — ' + m.mercado + ' | Odd ' + m.odd.toFixed(2) + '\n'
+        listaApostas += '   — ' + m.mercado + ' | Odd ' + m.odd.toFixed(2) + ' | Edge: +' + Math.round(m.edge * 100) + '%\n'
       })
     }
 
@@ -509,7 +554,7 @@ function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno, performan
 
   const destaque = apostas[0]
   const destaqueData = destaque.dataJogo === hojeStr ? 'HOJE' : formatarData(destaque.dataJogo)
-  const destaqueProbPct = Math.round((1 / destaque.odd + destaque.edge) * 100)
+  const destaqueProbPct = Math.round(destaque.prob * 100)
   const destaqueOddImplicita = Math.round((1 / destaque.odd) * 100)
 
   let evitar = ''
@@ -542,6 +587,8 @@ function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno, performan
   ].join('\n')
 }
 
+// ─── TELEGRAM ───
+
 async function enviarTelegram(mensagem) {
   try {
     await axios.post('https://api.telegram.org/bot' + TELEGRAM_TOKEN + '/sendMessage', {
@@ -553,6 +600,8 @@ async function enviarTelegram(mensagem) {
     console.error('Erro Telegram:', err.response?.data || err.message)
   }
 }
+
+// ─── AGENTE PRINCIPAL ───
 
 async function runAgent(turno) {
   console.log('\n[' + new Date().toISOString() + '] Agente iniciado - turno: ' + turno)
@@ -589,13 +638,14 @@ async function runAgent(turno) {
 
     const todasApostas = []
     const jogosComBaixoEdge = []
-    const jogosFiltrados = jogos.slice(0, 25)
+    // Limite reduzido para respeitar rate limit (3 reqs por jogo: casa + fora + h2h)
+    const jogosFiltrados = jogos.slice(0, 15)
 
     for (const jogo of jogosFiltrados) {
-      const stats = await buscarStats(jogo.timeCasaId, jogo.timeForaId)
+      const stats = await buscarStats(jogo.timeCasaId, jogo.timeForaId, jogo.matchId)
       if (!stats) continue
 
-      const bets = calcularEdge(stats, jogo)
+      const bets = calcularEdge(stats)
 
       if (bets.length > 0) {
         for (const b of bets) {
@@ -606,6 +656,7 @@ async function runAgent(turno) {
             mercado: b.mercado,
             odd: b.odd,
             edge: b.edge,
+            prob: b.prob,
             prioridade: jogo.prioridade,
             dataJogo: jogo.dataJogo
           })
@@ -649,7 +700,6 @@ async function runAgent(turno) {
           const res = await buscarResultadoPartida(a.matchId)
           resultadosReais.push(res)
         }
-        // ✅ CORRIGIDO: salva resultados no Supabase
         await salvarResultadosSupabase(apostasOntem, resultadosReais)
       }
       await postarInstagram(apostasOntem, resultadosReais, turno)
@@ -682,11 +732,10 @@ async function runContexto() {
 }
 
 // ─── AGENDAMENTOS ───
-cron.schedule('0 8 * * *',   function() { runAgent('manha') },      { timezone: 'America/Sao_Paulo' })
-cron.schedule('0 12 * * *',  function() { runContexto() },          { timezone: 'America/Sao_Paulo' })
-cron.schedule('0 13 * * *',  function() { runAgent('tarde') },      { timezone: 'America/Sao_Paulo' })
-cron.schedule('0 19 * * *',  function() { runAgent('noite') },      { timezone: 'America/Sao_Paulo' })
-// ✅ NOVO: monitora resultados a cada 30 minutos entre 14h e 00h
+cron.schedule('0 8 * * *',        function() { runAgent('manha') },     { timezone: 'America/Sao_Paulo' })
+cron.schedule('0 12 * * *',       function() { runContexto() },         { timezone: 'America/Sao_Paulo' })
+cron.schedule('0 13 * * *',       function() { runAgent('tarde') },     { timezone: 'America/Sao_Paulo' })
+cron.schedule('0 19 * * *',       function() { runAgent('noite') },     { timezone: 'America/Sao_Paulo' })
 cron.schedule('*/30 14-23 * * *', function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
 
 console.log('Agente agendado: 8h, 12h, 13h e 19h (horario de Brasilia)')
