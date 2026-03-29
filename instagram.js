@@ -1,6 +1,6 @@
 require('dotenv').config()
 const axios = require('axios')
-const { gerarESubirImagem } = require('./gerarImagem')
+const { gerarESubirImagem, gerarESubirStory } = require('./gerarImagem')
 
 const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
 const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
@@ -104,6 +104,36 @@ async function publicarViaZernio(caption, imageUrl) {
   }
 }
 
+
+async function publicarStoryViaZernio(imageUrl) {
+  try {
+    console.log('Publicando Story no Instagram via Zernio...')
+
+    await axios.post('https://zernio.com/api/v1/posts', {
+      platforms: [{
+        platform: 'instagram',
+        accountId: ZERNIO_ACCOUNT_ID,
+        platformSpecificData: { contentType: 'story' }
+      }],
+      content: '',
+      mediaItems: [{ type: 'image', url: imageUrl }],
+      publishNow: true
+    }, {
+      headers: {
+        'Authorization': 'Bearer ' + ZERNIO_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    console.log('Story publicado com sucesso!')
+    return true
+
+  } catch (err) {
+    console.error('Erro ao publicar story:', err.response?.data || err.message)
+    return false
+  }
+}
+
 async function postarInstagram(apostasOntem, resultados, turno) {
   if (turno !== 'manha') return
 
@@ -121,8 +151,16 @@ async function postarInstagram(apostasOntem, resultados, turno) {
       return
     }
 
+    // Publica no feed
     const caption = gerarCaption(apostasOntem, resultados || [])
     await publicarViaZernio(caption, imageUrl)
+
+    // Gera e publica story 9:16
+    console.log('Gerando story de resultado...')
+    const storyUrl = await gerarESubirStory(apostasOntem || [], resultados || [])
+    if (storyUrl) {
+      await publicarStoryViaZernio(storyUrl)
+    }
 
   } catch (err) {
     console.error('Erro no modulo Instagram:', err.message)
