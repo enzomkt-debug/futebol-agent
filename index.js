@@ -495,7 +495,13 @@ async function runAgent(turno) {
 
     let jogos = []
     if (turno === 'manha') {
-      jogos = await buscarJogosProximosDias()
+      const todosJogos = await buscarJogosProximosDias()
+      const hoje = new Date().toISOString().split('T')[0]
+      const amanha = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+      jogos = todosJogos.filter(function(j) {
+        return j.dataJogo === hoje || j.dataJogo === amanha
+      })
+      if (!jogos.length) jogos = todosJogos.slice(0, 10)
     } else {
       jogos = await buscarJogosHoje()
       const horaCorte = turno === 'tarde' ? 14 : 18
