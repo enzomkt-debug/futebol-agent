@@ -12,6 +12,12 @@ const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 const GITHUB_REPO = process.env.GITHUB_REPO
 
+// Configura fontconfig para encontrar fontes no Railway (Linux)
+if (process.platform !== 'win32') {
+  process.env.FONTCONFIG_PATH = '/usr/share/fontconfig'
+  process.env.FONTCONFIG_FILE = '/etc/fonts/fonts.conf'
+}
+
 const FONTE = process.platform === 'win32' ? 'Arial' : 'DejaVu Sans'
 
 // ─── BUSCA IMAGEM NO UNSPLASH ───
