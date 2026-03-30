@@ -179,10 +179,10 @@ async function gerarCardEducativo(dado, confronto, imagemUrl) {
 
   const paddingV = 50
   const fonteConfronto = 40
-  const espacoLinha = 30
-  const espacoConfronto = espacoLinha + 10 + fonteConfronto + paddingV
+  const espacoLinha = 25
   const alturaLinhas = linhasDado.length * (tamanhoFonte + 12)
-  const cardH = paddingV + alturaLinhas + espacoConfronto
+  // cardH = padding topo + linhas do dado + espaço até linha + linha(2px) + espaço + confronto + padding baixo
+  const cardH = paddingV + alturaLinhas + tamanhoFonte + espacoLinha + 2 + 15 + fonteConfronto + paddingV
   const cardY = (1080 - cardH) / 2
 
   // Desenha o card com tamanho calculado
@@ -200,21 +200,25 @@ async function gerarCardEducativo(dado, confronto, imagemUrl) {
   ctx.shadowColor = '#00c48c'
   ctx.shadowBlur = 20
   ctx.fillStyle = '#ffffff'
-  let yDado = cardY + paddingV + tamanhoFonte
+  // yBase = topo do card + padding + altura de uma linha (baseline da primeira linha)
+  let yBase = cardY + paddingV + tamanhoFonte
   linhasDado.forEach(function(linha) {
-    ctx.fillText(linha, 540, yDado)
-    yDado += tamanhoFonte + 12
+    ctx.fillText(linha, 540, yBase)
+    yBase += tamanhoFonte + 12
   })
   ctx.shadowBlur = 0
+  // yBase agora aponta para depois da última linha
 
-  // Linha divisoria
+  // Linha divisoria — posição fixa relativa ao fim das linhas
+  const yLinha = yBase + espacoLinha
   ctx.fillStyle = 'rgba(255,255,255,0.25)'
-  ctx.fillRect(160, yDado + espacoLinha, 760, 1)
+  ctx.fillRect(160, yLinha, 760, 2)
 
-  // Confronto
+  // Confronto — baseline 15px abaixo da linha + altura da fonte
   ctx.fillStyle = '#ffffff'
   ctx.font = 'bold ' + fonteConfronto + 'px ' + FONTE
-  ctx.fillText(confronto, 540, yDado + espacoLinha + 10 + fonteConfronto)
+  const yConfrontoFinal = cardY + cardH - paddingV + fonteConfronto - 10
+  ctx.fillText(confronto, 540, yConfrontoFinal)
 
   // Salva
   const assetsDir = path.join(__dirname, 'assets')
