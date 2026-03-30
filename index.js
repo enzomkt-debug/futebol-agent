@@ -265,15 +265,13 @@ async function monitorarResultados() {
   const apostas = carregarApostasDeOntem()
   if (!apostas || !apostas.length) return
 
-  const notificados = carregarNotificados()
-  // Data em horário de Brasília para evitar erro na virada da meia-noite
+  // CORRIGIDO: await adicionado — sem isso, notificados era sempre uma Promise vazia
+  const notificados = await carregarNotificados()
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 
   for (const key of Object.keys(notificados)) {
     if (!key.startsWith(hoje)) delete notificados[key]
   }
-
-  let algumNovo = false
 
   for (const aposta of apostas) {
     const chave = hoje + '_' + aposta.matchId
@@ -305,12 +303,10 @@ async function monitorarResultados() {
     await salvarResultadosSupabase([aposta], [resultado])
     await postarInstagram([aposta], [resultado], 'manha')
 
-    notificados[chave] = true
-    algumNovo = true
+    // CORRIGIDO: salvarNotificado(chave) — função correta que grava no Supabase
+    await salvarNotificado(chave)
     console.log('Resultado notificado: ' + aposta.jogo + ' (' + placar + ') — ' + status)
   }
-
-  if (algumNovo) salvarNotificados(notificados)
 }
 
 // ─── COLETA DE DADOS ───
@@ -647,7 +643,6 @@ async function runAgent(turno) {
       jogos = await buscarJogosHoje()
       const horaCorte = turno === 'tarde' ? 14 : 18
       jogos = jogos.filter(function(j) {
-        // Converte horário do jogo para Brasília antes de comparar
         const hora = parseInt(new Date(j.horario).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false }))
         return hora >= horaCorte
       })
@@ -752,7 +747,6 @@ async function runContexto() {
   }
   console.log('[' + new Date().toISOString() + '] Post de contexto finalizado')
 }
-
 
 async function runEducativo() {
   console.log('\n[' + new Date().toISOString() + '] Post educativo iniciado')
