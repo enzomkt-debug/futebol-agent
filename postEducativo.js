@@ -178,9 +178,11 @@ async function gerarCardEducativo(dado, confronto, imagemUrl) {
   }
 
   const paddingV = 50
-  const espacoConfronto = 100
+  const fonteConfronto = 40
+  const espacoLinha = 30
+  const espacoConfronto = espacoLinha + 10 + fonteConfronto + paddingV
   const alturaLinhas = linhasDado.length * (tamanhoFonte + 12)
-  const cardH = paddingV * 2 + alturaLinhas + espacoConfronto
+  const cardH = paddingV + alturaLinhas + espacoConfronto
   const cardY = (1080 - cardH) / 2
 
   // Desenha o card com tamanho calculado
@@ -207,12 +209,12 @@ async function gerarCardEducativo(dado, confronto, imagemUrl) {
 
   // Linha divisoria
   ctx.fillStyle = 'rgba(255,255,255,0.25)'
-  ctx.fillRect(160, yDado + 15, 760, 1)
+  ctx.fillRect(160, yDado + espacoLinha, 760, 1)
 
   // Confronto
   ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 40px ' + FONTE
-  ctx.fillText(confronto, 540, yDado + 65)
+  ctx.font = 'bold ' + fonteConfronto + 'px ' + FONTE
+  ctx.fillText(confronto, 540, yDado + espacoLinha + 10 + fonteConfronto)
 
   // Salva
   const assetsDir = path.join(__dirname, 'assets')
