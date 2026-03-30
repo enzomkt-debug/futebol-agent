@@ -11,7 +11,6 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
 const API_BASE = 'https://api.football-data.org/v4'
 
 const APOSTAS_FILE = './apostas_ontem.json'
-const NOTIFICADOS_FILE = './resultados_notificados.json'
 
 // ─── SUPABASE ───
 const supabase = createClient(
@@ -165,22 +164,29 @@ const DICAS = [
   'Diversifique as apostas entre ligas diferentes para reduzir o risco.'
 ]
 
-// ─── CONTROLE DE NOTIFICADOS ───
+// ─── CONTROLE DE NOTIFICADOS VIA SUPABASE ───
 
-function carregarNotificados() {
+async function carregarNotificados() {
   try {
-    if (!fs.existsSync(NOTIFICADOS_FILE)) return {}
-    return JSON.parse(fs.readFileSync(NOTIFICADOS_FILE, 'utf8'))
+    const { data } = await supabase
+      .from('notificados')
+      .select('match_id')
+      .gte('criado_em', new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) + 'T00:00:00')
+    if (!data) return {}
+    const notificados = {}
+    data.forEach(function(r) { notificados[r.match_id] = true })
+    return notificados
   } catch (err) {
+    console.error('Erro ao carregar notificados:', err.message)
     return {}
   }
 }
 
-function salvarNotificados(notificados) {
+async function salvarNotificado(matchId) {
   try {
-    fs.writeFileSync(NOTIFICADOS_FILE, JSON.stringify(notificados, null, 2))
+    await supabase.from('notificados').insert({ match_id: String(matchId) })
   } catch (err) {
-    console.error('Erro ao salvar notificados:', err.message)
+    console.error('Erro ao salvar notificado:', err.message)
   }
 }
 
