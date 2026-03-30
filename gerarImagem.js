@@ -42,7 +42,7 @@ if (process.platform !== 'win32') {
 }
 
 // Fonte compativel com Linux (Railway) e Windows
-const FONTE = process.platform === 'win32' ? 'Arial' : 'DejaVu Sans'
+const FONTE = process.platform === 'win32' ? 'Arial' : 'Liberation Sans'
 
 function arredondarRetangulo(ctx, x, y, w, h, r) {
   ctx.beginPath()

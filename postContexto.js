@@ -4,7 +4,7 @@ const { gerarESubirImagem } = require('./gerarImagem')
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 
-const FONTE = process.platform === 'win32' ? 'Arial' : 'DejaVu Sans'
+const FONTE = process.platform === 'win32' ? 'Arial' : 'Liberation Sans'
 const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
 const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 
