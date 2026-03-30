@@ -59,9 +59,10 @@ ${listaJogos}
 
 Escolha o confronto mais interessante e retorne EXATAMENTE neste formato, sem texto adicional:
 
-HEADLINE: [frase de impacto curta em maiusculas, maximo 4 palavras, ex: CHOQUE DE GIGANTES]
-CONFRONTO: [Time Casa x Time Fora - Data, ex: Flamengo x Palmeiras - 03/04]
-TEXTO: [post completo para legenda do Instagram, maximo 5 linhas, curioso e informativo sobre o confronto, termine com "Acompanha a analise completa no nosso Telegram. Link na bio.", sem apostas, sem inventar estatisticas]
+DADO: [curiosidade ou estatistica impactante sobre o confronto ou times, pode ser numero, pergunta provocativa ou fato historico, maximo 10 palavras, ex: "83% dos jogos terminaram com mais de 2 gols" ou "Voce sabia? Esses times se enfrentaram 3 vezes em finais" — seja criativo e variado]
+CONFRONTO: [Time Casa x Time Fora - Data curta, ex: Flamengo x Palmeiras - 03/04]
+RESUMO: [exatamente 2 frases completas, cada uma com no maximo 60 caracteres, terminando com ponto final, sobre o confronto, sem mencionar apostas]
+TEXTO: [post completo para legenda do Instagram, maximo 5 linhas, curioso e informativo, termine com "Acompanha a analise completa no nosso Telegram. Link na bio.", sem apostas]
 QUERY_IMAGEM: [3 palavras em ingles para foto no Unsplash, ex: football stadium crowd]`
       }]
     }, {
@@ -76,30 +77,38 @@ QUERY_IMAGEM: [3 palavras em ingles para foto no Unsplash, ex: football stadium 
     console.log('=== RESPOSTA CLAUDE ===\n' + resposta + '\n===')
     const linhasResposta = resposta.split('\n')
     
-    let headline = 'FUTEBOL & DADOS'
+    let dado = 'Futebol com dados e estatisticas'
     let confronto = ''
+    let resumo = ''
     let texto = ''
     let query = 'football stadium crowd'
 
     linhasResposta.forEach(function(linha) {
-      if (linha.startsWith('HEADLINE:')) headline = linha.replace('HEADLINE:', '').trim()
+      if (linha.startsWith('DADO:')) dado = linha.replace('DADO:', '').trim()
       else if (linha.startsWith('CONFRONTO:')) confronto = linha.replace('CONFRONTO:', '').trim()
+      else if (linha.startsWith('RESUMO:')) resumo = linha.replace('RESUMO:', '').trim()
       else if (linha.startsWith('QUERY_IMAGEM:')) query = linha.replace('QUERY_IMAGEM:', '').trim()
-      else if (linha.startsWith('TEXTO:')) texto = linha.replace('TEXTO:', '').trim()
     })
 
-    // Se o texto vier em múltiplas linhas após TEXTO:
+    // Extrai TEXTO entre TEXTO: e QUERY_IMAGEM:
     const idxTexto = resposta.indexOf('TEXTO:')
     const idxQuery = resposta.indexOf('QUERY_IMAGEM:')
     if (idxTexto >= 0 && idxQuery > idxTexto) {
       texto = resposta.substring(idxTexto + 6, idxQuery).trim()
     }
 
-    console.log('Headline:', headline)
+    // Extrai RESUMO entre RESUMO: e TEXTO:
+    const idxResumo = resposta.indexOf('RESUMO:')
+    if (idxResumo >= 0 && idxTexto > idxResumo) {
+      resumo = resposta.substring(idxResumo + 7, idxTexto).trim()
+    }
+
+    console.log('Dado:', dado)
     console.log('Confronto:', confronto)
+    console.log('Resumo:', resumo)
     console.log('Query Unsplash:', query)
 
-    return { headline, confronto, texto, query }
+    return { dado, confronto, resumo, texto, query }
 
   } catch (err) {
     console.error('Erro ao chamar Claude:', err.response?.data || err.message)
@@ -109,7 +118,7 @@ QUERY_IMAGEM: [3 palavras em ingles para foto no Unsplash, ex: football stadium 
 
 // ─── GERA CARD COM FOTO DE FUNDO ───
 
-async function gerarCardEducativo(headline, confronto, imagemUrl) {
+async function gerarCardEducativo(dado, confronto, imagemUrl) {
   const width = 1080
   const height = 1080
   const canvas = createCanvas(width, height)
@@ -119,37 +128,91 @@ async function gerarCardEducativo(headline, confronto, imagemUrl) {
   ctx.fillStyle = '#0d0d1a'
   ctx.fillRect(0, 0, width, height)
 
-  // Carrega imagem de fundo
+  // Foto de fundo
   if (imagemUrl) {
     try {
       const img = await loadImage(imagemUrl)
       ctx.drawImage(img, 0, 0, width, height)
     } catch (err) {
-      console.log('Erro ao carregar imagem, usando fundo escuro:', err.message)
+      console.log('Erro ao carregar imagem:', err.message)
     }
   }
 
-  // Overlay gradiente — mais escuro no centro para destacar o texto
-  const gradient = ctx.createRadialGradient(540, 540, 100, 540, 540, 700)
-  gradient.addColorStop(0, 'rgba(0,0,0,0.65)')
-  gradient.addColorStop(1, 'rgba(0,0,0,0.3)')
-  ctx.fillStyle = gradient
+  // Overlay escuro geral
+  ctx.fillStyle = 'rgba(0,0,0,0.7)'
   ctx.fillRect(0, 0, width, height)
 
-  // Headline grande centralizado
+  // ─── Calcula o texto primeiro para definir o tamanho do card ───
   ctx.textAlign = 'center'
   ctx.fillStyle = '#00c48c'
-  ctx.font = 'bold 100px ' + FONTE
-  ctx.fillText(headline, 540, 460)
 
-  // Linha divisoria sutil
-  ctx.fillStyle = 'rgba(255,255,255,0.3)'
-  ctx.fillRect(200, 490, 680, 2)
+  // Fonte inicial grande, quebra em linhas
+  let tamanhoFonte = 88
+  ctx.font = 'bold ' + tamanhoFonte + 'px ' + FONTE
+
+  const palavras = dado.split(' ')
+  let linhasDado = []
+  let linhaAtual = ''
+  palavras.forEach(function(p) {
+    const teste = linhaAtual + p + ' '
+    if (ctx.measureText(teste).width > 880 && linhaAtual) {
+      linhasDado.push(linhaAtual.trim())
+      linhaAtual = p + ' '
+    } else { linhaAtual = teste }
+  })
+  if (linhaAtual) linhasDado.push(linhaAtual.trim())
+
+  if (linhasDado.length > 3) {
+    tamanhoFonte = 70
+    ctx.font = 'bold ' + tamanhoFonte + 'px ' + FONTE
+    linhasDado = []
+    linhaAtual = ''
+    palavras.forEach(function(p) {
+      const teste = linhaAtual + p + ' '
+      if (ctx.measureText(teste).width > 880 && linhaAtual) {
+        linhasDado.push(linhaAtual.trim())
+        linhaAtual = p + ' '
+      } else { linhaAtual = teste }
+    })
+    if (linhaAtual) linhasDado.push(linhaAtual.trim())
+  }
+
+  const paddingV = 50
+  const espacoConfronto = 100
+  const alturaLinhas = linhasDado.length * (tamanhoFonte + 12)
+  const cardH = paddingV * 2 + alturaLinhas + espacoConfronto
+  const cardY = (1080 - cardH) / 2
+
+  // Desenha o card com tamanho calculado
+  ctx.fillStyle = 'rgba(0,0,0,0.85)'
+  ctx.beginPath()
+  ctx.roundRect(60, cardY, 960, cardH, 24)
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(0,196,140,0.6)'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.roundRect(60, cardY, 960, cardH, 24)
+  ctx.stroke()
+
+  // Dado dentro do card — branco com sombra para destacar
+  ctx.shadowColor = '#00c48c'
+  ctx.shadowBlur = 20
+  ctx.fillStyle = '#ffffff'
+  let yDado = cardY + paddingV + tamanhoFonte
+  linhasDado.forEach(function(linha) {
+    ctx.fillText(linha, 540, yDado)
+    yDado += tamanhoFonte + 12
+  })
+  ctx.shadowBlur = 0
+
+  // Linha divisoria
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'
+  ctx.fillRect(160, yDado + 15, 760, 1)
 
   // Confronto
   ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 52px ' + FONTE
-  ctx.fillText(confronto, 540, 580)
+  ctx.font = 'bold 40px ' + FONTE
+  ctx.fillText(confronto, 540, yDado + 65)
 
   // Salva
   const assetsDir = path.join(__dirname, 'assets')
@@ -223,7 +286,7 @@ async function publicarViaZernio(caption, imageUrl) {
 }
 
 
-async function gerarCardEducativoStory(headline, confronto, imagemUrl) {
+async function gerarCardEducativoStory(dado, confronto, resumo, imagemUrl) {
   const width = 1080
   const height = 1920
   const canvas = createCanvas(width, height)
@@ -249,45 +312,78 @@ async function gerarCardEducativoStory(headline, confronto, imagemUrl) {
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, width, height)
 
-  // Barra topo
-  ctx.fillStyle = '#00c48c'
-  ctx.fillRect(0, 0, width, 10)
+  // Sem header — story minimalista
 
-  // Header
-  ctx.fillStyle = '#00c48c'
-  ctx.font = 'bold 58px ' + FONTE
-  ctx.textAlign = 'center'
-  ctx.fillText('Gol Match BR', 540, 120)
-  ctx.fillStyle = 'rgba(255,255,255,0.5)'
-  ctx.font = '30px ' + FONTE
-  ctx.fillText('@golmatchbr', 540, 168)
+  // ─── BLOCO DO DADO ───
+  const cardY = 500
+  const maxLargura = 900
 
-  ctx.fillStyle = 'rgba(0,196,140,0.4)'
-  ctx.fillRect(70, 195, 940, 1)
-
-  // Headline grande centralizado verticalmente
   ctx.textAlign = 'center'
   ctx.fillStyle = '#00c48c'
-  ctx.font = 'bold 130px ' + FONTE
-  ctx.fillText(headline, 540, 880)
 
-  // Linha divisoria
+  // Quebra o dado em linhas
+  let tamanhoFonte = 90
+  ctx.font = 'bold ' + tamanhoFonte + 'px ' + FONTE
+  const palavras = dado.split(' ')
+  let linhasDado = []
+  let linhaAtual = ''
+  palavras.forEach(function(p) {
+    const teste = linhaAtual + p + ' '
+    if (ctx.measureText(teste).width > maxLargura && linhaAtual) {
+      linhasDado.push(linhaAtual.trim())
+      linhaAtual = p + ' '
+    } else { linhaAtual = teste }
+  })
+  if (linhaAtual) linhasDado.push(linhaAtual.trim())
+
+  if (linhasDado.length > 2) {
+    tamanhoFonte = 70
+    ctx.font = 'bold ' + tamanhoFonte + 'px ' + FONTE
+  }
+
+  let yDado = cardY
+  linhasDado.forEach(function(linha) {
+    ctx.fillText(linha, 540, yDado)
+    yDado += tamanhoFonte + 16
+  })
+
+  // ─── CONFRONTO ───
+  const yConfronto = yDado + 40
   ctx.fillStyle = 'rgba(255,255,255,0.3)'
-  ctx.fillRect(150, 910, 780, 2)
-
-  // Confronto
+  ctx.fillRect(160, yConfronto - 30, 760, 2)
   ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 64px ' + FONTE
-  ctx.fillText(confronto, 540, 990)
+  ctx.font = 'bold 52px ' + FONTE
+  ctx.fillText(confronto, 540, yConfronto + 20)
 
-  // Rodape
-  ctx.fillStyle = 'rgba(0,0,0,0.6)'
-  ctx.fillRect(0, 1870, width, 40)
+  // ─── RESUMO ─── (com quebra automática e margem lateral)
+  const yResumoInicio = yConfronto + 100
+  ctx.fillStyle = 'rgba(255,255,255,0.85)'
+  ctx.font = '34px ' + FONTE
+  const maxWidthResumo = 860
+  const palavrasResumo = resumo.replace('\n', ' ').split(' ').filter(p => p)
+  const linhasResumo = []
+  let lAtual = ''
+  palavrasResumo.forEach(function(p) {
+    const teste = lAtual + p + ' '
+    if (ctx.measureText(teste).width > maxWidthResumo && lAtual) {
+      linhasResumo.push(lAtual.trim())
+      lAtual = p + ' '
+    } else { lAtual = teste }
+  })
+  if (lAtual) linhasResumo.push(lAtual.trim())
+
+  let yResumo = yResumoInicio
+  linhasResumo.slice(0, 4).forEach(function(linha) {
+    ctx.fillText(linha, 540, yResumo)
+    yResumo += 46
+  })
+
+  // ─── CTA — respiro de 350px do fundo para icones do Instagram ───
   ctx.fillStyle = '#00c48c'
-  ctx.font = 'bold 22px ' + FONTE
-  ctx.fillText('golmatchbr.com.br - analise estatistica de futebol', 540, 1897)
-  ctx.fillStyle = '#00c48c'
-  ctx.fillRect(0, 1910, width, 10)
+  ctx.font = 'bold 32px ' + FONTE
+  ctx.fillText('Analise completa no Telegram - Link na bio', 540, 1550)
+
+  // Sem rodape — story minimalista
 
   const assetsDir = path.join(__dirname, 'assets')
   if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir)
@@ -393,14 +489,14 @@ async function postarConteudoEducativo(jogos) {
     const resultado = await gerarTextoEducativo(jogos)
     if (!resultado) return
 
-    const { headline, confronto, texto, query } = resultado
+    const { dado, confronto, resumo, texto, query } = resultado
 
     // 2. Busca imagem no Unsplash
     console.log('Buscando imagem no Unsplash:', query)
     const imagemUrl = await buscarImagemUnsplash(query)
 
     // 3. Gera card
-    const caminhoLocal = await gerarCardEducativo(headline, confronto, imagemUrl)
+    const caminhoLocal = await gerarCardEducativo(dado, confronto, imagemUrl)
 
     // 4. Sobe para GitHub
     const urlPublica = await subirGithub(caminhoLocal)
@@ -413,7 +509,7 @@ async function postarConteudoEducativo(jogos) {
 
     // 6. Gera e publica story 9:16 com a mesma foto de fundo
     console.log('Gerando story educativo...')
-    const storyLocal = await gerarCardEducativoStory(headline, confronto, imagemUrl)
+    const storyLocal = await gerarCardEducativoStory(dado, confronto, resumo, imagemUrl)
     const storyPath = path.join(__dirname, 'assets', 'card-educativo-story.png')
     const storyUrl = await subirGithubArquivo(storyLocal, 'card-educativo-story.png')
     if (storyUrl) {
