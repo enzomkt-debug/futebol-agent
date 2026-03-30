@@ -1,7 +1,35 @@
-const { createCanvas } = require('canvas')
+const { createCanvas, registerFont } = require('canvas')
 const fs = require('fs')
 const path = require('path')
 const axios = require('axios')
+
+// ─── REGISTRO EXPLÍCITO DE FONTE NO RAILWAY (LINUX) ───
+// Garante que o canvas encontra a fonte independente do fontconfig do sistema
+if (process.platform !== 'win32') {
+  const fontPaths = [
+    // Nix (Railway)
+    '/run/current-system/sw/share/X11/fonts/truetype/dejavu/DejaVuSans.ttf',
+    '/run/current-system/sw/share/X11/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+    // Debian/Ubuntu fallback
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+  ]
+
+  const regular = fontPaths.find(p => p.includes('Sans.ttf') && fs.existsSync(p))
+  const bold    = fontPaths.find(p => p.includes('Bold.ttf') && fs.existsSync(p))
+
+  if (regular) {
+    registerFont(regular, { family: 'DejaVu Sans', weight: 'normal' })
+    console.log('Fonte DejaVu Sans registrada:', regular)
+  } else {
+    console.log('AVISO: DejaVu Sans nao encontrada — texto pode aparecer como quadradinhos')
+  }
+
+  if (bold) {
+    registerFont(bold, { family: 'DejaVu Sans', weight: 'bold' })
+    console.log('Fonte DejaVu Sans Bold registrada:', bold)
+  }
+}
 
 // Fonte compativel com Linux (Railway) e Windows
 const FONTE = process.platform === 'win32' ? 'Arial' : 'DejaVu Sans'
@@ -124,7 +152,6 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.fill()
     ctx.globalAlpha = 1
 
-    // Circulo verde em vez de simbolo
     ctx.fillStyle = '#00c48c'
     ctx.beginPath()
     ctx.arc(540, 300, 70, 0, Math.PI * 2)
@@ -216,7 +243,6 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.fill()
     ctx.globalAlpha = 1
 
-    // Circulo vermelho em vez de simbolo
     ctx.fillStyle = '#e94560'
     ctx.beginPath()
     ctx.arc(540, 290, 70, 0, Math.PI * 2)
@@ -370,7 +396,6 @@ async function gerarESubirImagem(apostas, turno, resultados) {
   return urlPublica
 }
 
-
 async function gerarImagemStory(apostas, resultados) {
   const width = 1080
   const height = 1920
@@ -403,11 +428,9 @@ async function gerarImagemStory(apostas, resultados) {
   const COR_FUNDO = isVerde ? '#0a1e14' : '#1a0a0d'
   const COR_CARD = isVerde ? '#0d2a1a' : '#2a0d12'
 
-  // Fundo
   ctx.fillStyle = COR_FUNDO
   ctx.fillRect(0, 0, width, height)
 
-  // Grade sutil
   ctx.strokeStyle = 'rgba(255,255,255,0.025)'
   ctx.lineWidth = 1
   for (let i = 0; i < width; i += 80) {
@@ -417,7 +440,6 @@ async function gerarImagemStory(apostas, resultados) {
     ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(width, i); ctx.stroke()
   }
 
-  // Circulo decorativo
   ctx.fillStyle = COR_TEMA
   ctx.globalAlpha = 0.06
   ctx.beginPath()
@@ -425,7 +447,6 @@ async function gerarImagemStory(apostas, resultados) {
   ctx.fill()
   ctx.globalAlpha = 1
 
-  // Barra topo
   ctx.fillStyle = COR_TEMA
   ctx.fillRect(0, 0, width, 10)
 
@@ -453,7 +474,6 @@ async function gerarImagemStory(apostas, resultados) {
   } else if (isVerde) {
     // ── STORY VERDE ──
 
-    // Circulo OK grande centralizado
     ctx.fillStyle = '#00c48c'
     ctx.globalAlpha = 0.1
     ctx.beginPath()
@@ -483,7 +503,6 @@ async function gerarImagemStory(apostas, resultados) {
     ctx.font = 'bold 72px ' + FONTE
     ctx.fillText(placar, 540, 970)
 
-    // Card analise
     ctx.fillStyle = COR_CARD
     arredondarRetangulo(ctx, 60, 1020, 960, 160, 20)
     ctx.fill()
@@ -503,7 +522,6 @@ async function gerarImagemStory(apostas, resultados) {
     ctx.font = '26px ' + FONTE
     ctx.fillText('Baseada em dados estatisticos', 540, 1148)
 
-    // Performance
     ctx.fillStyle = COR_CARD
     arredondarRetangulo(ctx, 60, 1205, 960, 100, 16)
     ctx.fill()
@@ -519,7 +537,6 @@ async function gerarImagemStory(apostas, resultados) {
     ctx.font = 'bold 32px ' + FONTE
     ctx.fillText(acertos + '/' + total + ' corretas - Taxa: ' + taxa + '%', 540, 1285)
 
-    // CTA
     ctx.fillStyle = '#00c48c'
     arredondarRetangulo(ctx, 160, 1350, 760, 90, 45)
     ctx.fill()
