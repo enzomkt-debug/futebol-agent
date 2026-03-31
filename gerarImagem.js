@@ -5,8 +5,14 @@ const axios = require('axios')
 
 // Registra fonte empacotada no repositorio — funciona em qualquer ambiente
 try {
-  registerFont(path.join(__dirname, 'fonts', 'DejaVuSans.ttf'), { family: 'DejaVu Sans', weight: 'normal' })
-  registerFont(path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'), { family: 'DejaVu Sans', weight: 'bold' })
+  const fontPath = path.join(__dirname, 'fonts', 'DejaVuSans.ttf')
+  const fontBoldPath = path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf')
+  console.log('__dirname:', __dirname)
+  console.log('Tentando carregar fonte em:', fontPath)
+  console.log('Arquivo existe?', fs.existsSync(fontPath))
+  registerFont(fontPath, { family: 'DejaVu Sans', weight: 'normal' })
+  registerFont(fontBoldPath, { family: 'DejaVu Sans', weight: 'bold' })
+  console.log('Fonte DejaVu registrada com sucesso!')
 } catch(e) {
   console.log('Aviso: erro ao registrar fonte DejaVu:', e.message)
 }
