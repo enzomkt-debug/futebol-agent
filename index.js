@@ -1,7 +1,7 @@
 require('dotenv').config()
 const axios = require('axios')
 const cron = require('node-cron')
-const fs = require('fs')
+const { verificarAcerto } = require('./utils')
 const { postarInstagram } = require('./instagram')
 const { createClient } = require('@supabase/supabase-js')
 
@@ -9,8 +9,6 @@ const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
 const API_BASE = 'https://api.football-data.org/v4'
-
-const APOSTAS_FILE = './apostas_ontem.json'
 
 // ─── SUPABASE ───
 const supabase = createClient(
@@ -34,13 +32,15 @@ async function apiFootball(url, params) {
   return res.data
 }
 
-// ─── SUPABASE ───
+// ─── APOSTAS VIA SUPABASE (substitui apostas_ontem.json) ───
+// CORREÇÃO CRÍTICA: o filesystem do Railway é efêmero.
+// Apostas são sempre persistidas e lidas do Supabase.
 
-async function salvarApostasSupabase(apostas, turno) {
+async function salvarApostasHojeSupabase(apostas, turno) {
   try {
     const registros = apostas.map(function(a) {
       return {
-        match_id: a.matchId,
+        match_id: String(a.matchId),
         jogo: a.jogo,
         liga: a.liga,
         mercado: a.mercado,
@@ -54,7 +54,83 @@ async function salvarApostasSupabase(apostas, turno) {
     if (error) console.error('Erro ao salvar apostas no Supabase:', error.message)
     else console.log(apostas.length + ' apostas salvas no Supabase')
   } catch (err) {
-    console.error('Erro Supabase:', err.message)
+    console.error('Erro Supabase salvarApostas:', err.message)
+  }
+}
+
+// Busca as apostas de ontem direto do Supabase, sem depender de arquivo local
+async function carregarApostasOntemSupabase() {
+  try {
+    const ontem = new Date()
+    ontem.setDate(ontem.getDate() - 1)
+    const dataOntem = ontem.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+
+    const { data, error } = await supabase
+      .from('apostas')
+      .select('*')
+      .eq('data_jogo', dataOntem)
+      .eq('turno', 'manha')
+      .order('criado_em', { ascending: true })
+
+    if (error) {
+      console.error('Erro ao carregar apostas de ontem:', error.message)
+      return null
+    }
+
+    if (!data || !data.length) return null
+
+    // Normaliza para o mesmo formato usado pelo restante do código
+    return data.map(function(r) {
+      return {
+        matchId: r.match_id,
+        jogo: r.jogo,
+        liga: r.liga,
+        mercado: r.mercado,
+        odd: r.odd,
+        edge: r.edge,
+        dataJogo: r.data_jogo,
+        prioridade: 1
+      }
+    })
+  } catch (err) {
+    console.error('Erro ao carregar apostas de ontem:', err.message)
+    return null
+  }
+}
+
+// Busca apostas de HOJE para o monitor (todas as apostas salvas hoje)
+async function carregarApostasDoDia() {
+  try {
+    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+
+    const { data, error } = await supabase
+      .from('apostas')
+      .select('*')
+      .eq('data_jogo', hoje)
+      .order('criado_em', { ascending: true })
+
+    if (error) {
+      console.error('Erro ao carregar apostas do dia:', error.message)
+      return []
+    }
+
+    if (!data || !data.length) return []
+
+    return data.map(function(r) {
+      return {
+        matchId: r.match_id,
+        jogo: r.jogo,
+        liga: r.liga,
+        mercado: r.mercado,
+        odd: r.odd,
+        edge: r.edge,
+        dataJogo: r.data_jogo,
+        prioridade: 1
+      }
+    })
+  } catch (err) {
+    console.error('Erro ao carregar apostas do dia:', err.message)
+    return []
   }
 }
 
@@ -68,7 +144,7 @@ async function salvarResultadosSupabase(apostasOntem, resultados) {
       const { data } = await supabase
         .from('apostas')
         .select('id')
-        .eq('match_id', aposta.matchId)
+        .eq('match_id', String(aposta.matchId))
         .order('criado_em', { ascending: false })
         .limit(1)
 
@@ -80,6 +156,15 @@ async function salvarResultadosSupabase(apostasOntem, resultados) {
       if (aposta.mercado === 'Mais de 2.5 gols') acertou = totalGols > 2
       else if (aposta.mercado === 'Menos de 2.5 gols') acertou = totalGols < 3
       else if (aposta.mercado === 'Ambas marcam: SIM') acertou = ambasMarcaram
+
+      // Evita inserir resultado duplicado para a mesma aposta
+      const { data: existente } = await supabase
+        .from('resultados')
+        .select('id')
+        .eq('aposta_id', data[0].id)
+        .limit(1)
+
+      if (existente && existente.length) continue
 
       await supabase.from('resultados').insert({
         aposta_id: data[0].id,
@@ -168,10 +253,11 @@ const DICAS = [
 
 async function carregarNotificados() {
   try {
+    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
     const { data } = await supabase
       .from('notificados')
       .select('match_id')
-      .gte('criado_em', new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) + 'T00:00:00')
+      .gte('criado_em', hoje + 'T00:00:00')
     if (!data) return {}
     const notificados = {}
     data.forEach(function(r) { notificados[r.match_id] = true })
@@ -182,33 +268,15 @@ async function carregarNotificados() {
   }
 }
 
-async function salvarNotificado(matchId) {
+async function salvarNotificado(chave) {
   try {
-    await supabase.from('notificados').insert({ match_id: String(matchId) })
+    await supabase.from('notificados').insert({ match_id: String(chave) })
   } catch (err) {
     console.error('Erro ao salvar notificado:', err.message)
   }
 }
 
-// ─── APOSTAS ───
-
-function salvarApostasDeHoje(apostas) {
-  try {
-    fs.writeFileSync(APOSTAS_FILE, JSON.stringify(apostas, null, 2))
-    console.log('Apostas salvas para verificacao')
-  } catch (err) {
-    console.error('Erro ao salvar apostas:', err.message)
-  }
-}
-
-function carregarApostasDeOntem() {
-  try {
-    if (!fs.existsSync(APOSTAS_FILE)) return null
-    return JSON.parse(fs.readFileSync(APOSTAS_FILE, 'utf8'))
-  } catch (err) {
-    return null
-  }
-}
+// ─── RESULTADO DE PARTIDA ───
 
 async function buscarResultadoPartida(matchId) {
   try {
@@ -223,17 +291,11 @@ async function buscarResultadoPartida(matchId) {
   }
 }
 
-function verificarAcerto(aposta, resultado) {
-  const totalGols = resultado.golsCasa + resultado.golsFora
-  const ambasMarcaram = resultado.golsCasa > 0 && resultado.golsFora > 0
-  if (aposta.mercado === 'Mais de 2.5 gols') return totalGols > 2
-  if (aposta.mercado === 'Menos de 2.5 gols') return totalGols < 3
-  if (aposta.mercado === 'Ambas marcam: SIM') return ambasMarcaram
-  return false
-}
+// ─── GERAÇÃO DE RESULTADO DE ONTEM (usa Supabase, não arquivo local) ───
 
 async function gerarResultadoOntem() {
-  const apostasOntem = carregarApostasDeOntem()
+  // CORREÇÃO: carrega apostas de ontem do Supabase, não do arquivo local
+  const apostasOntem = await carregarApostasOntemSupabase()
   if (!apostasOntem || !apostasOntem.length) return 'Primeiro dia de operacao!'
 
   const destaque = apostasOntem[0]
@@ -244,13 +306,15 @@ async function gerarResultadoOntem() {
   const placar = resultado.golsCasa + ' x ' + resultado.golsFora
   const status = acertou ? 'VERDE ✅' : 'VERMELHO ❌'
 
-  let acertos = 0
-  let total = 0
-  for (const aposta of apostasOntem) {
-    const res = await buscarResultadoPartida(aposta.matchId)
+  // Busca os demais resultados
+  let acertos = acertou ? 1 : 0
+  let total = 1
+
+  for (let i = 1; i < apostasOntem.length; i++) {
+    const res = await buscarResultadoPartida(apostasOntem[i].matchId)
     if (!res) continue
     total++
-    if (verificarAcerto(aposta, res)) acertos++
+    if (verificarAcerto(apostasOntem[i], res)) acertos++
   }
 
   let resumo = destaque.jogo + ' (' + placar + ')\n'
@@ -262,16 +326,12 @@ async function gerarResultadoOntem() {
 // ─── MONITORAMENTO EM TEMPO REAL ───
 
 async function monitorarResultados() {
-  const apostas = carregarApostasDeOntem()
+  // Carrega apostas de HOJE do Supabase (não de arquivo local)
+  const apostas = await carregarApostasDoDia()
   if (!apostas || !apostas.length) return
 
-  // CORRIGIDO: await adicionado — sem isso, notificados era sempre uma Promise vazia
   const notificados = await carregarNotificados()
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
-
-  for (const key of Object.keys(notificados)) {
-    if (!key.startsWith(hoje)) delete notificados[key]
-  }
 
   for (const aposta of apostas) {
     const chave = hoje + '_' + aposta.matchId
@@ -299,12 +359,15 @@ async function monitorarResultados() {
       'Acompanhe o historico completo no grupo.'
     ].join('\n')
 
+    // Salva como notificado ANTES de enviar para evitar duplicatas em caso de falha parcial
+    await salvarNotificado(chave)
+
     await enviarTelegram(mensagem)
     await salvarResultadosSupabase([aposta], [resultado])
-    await postarInstagram([aposta], [resultado], 'manha')
 
-    // CORRIGIDO: salvarNotificado(chave) — função correta que grava no Supabase
-    await salvarNotificado(chave)
+    // CORREÇÃO: o monitor NÃO posta no Instagram — isso é responsabilidade do runAgent('manha')
+    // Postar aqui causaria múltiplas publicações por dia
+
     console.log('Resultado notificado: ' + aposta.jogo + ' (' + placar + ') — ' + status)
   }
 }
@@ -388,7 +451,7 @@ async function buscarJogosHoje() {
   }
 }
 
-// ─── H2H REAL ───
+// ─── H2H ───
 
 async function buscarH2H(matchId) {
   try {
@@ -411,14 +474,12 @@ async function buscarH2H(matchId) {
       btts: bttsCount / partidas.length
     }
   } catch (err) {
-    console.log('H2H indisponivel para match ' + matchId + ', usando padrao')
     return { mediaGols: 2.0, btts: 0.5 }
   }
 }
 
 async function buscarStats(timeCasaId, timeForaId, matchId) {
   try {
-    // Busca em sequência para respeitar rate limit
     const resCasa = await apiFootball('/teams/' + timeCasaId + '/matches', { status: 'FINISHED', limit: 8 })
     const resFora = await apiFootball('/teams/' + timeForaId + '/matches', { status: 'FINISHED', limit: 8 })
     const h2h = await buscarH2H(matchId)
@@ -450,7 +511,7 @@ async function buscarStats(timeCasaId, timeForaId, matchId) {
   }
 }
 
-// ─── ODDS DINÂMICAS ───
+// ─── ODDS E EDGE ───
 
 function estimarOddsOver(mediaGols) {
   if (mediaGols >= 3.2) return { over: 1.55, under: 2.35 }
@@ -468,14 +529,10 @@ function estimarOddsBTTS(probBTTS) {
   return 2.20
 }
 
-// ─── CÁLCULO DE EDGE COM POISSON ───
-
 function calcularEdge(stats) {
-  // Média ponderada: 60% forma recente + 40% H2H real
   const mediaRecente = (stats.casa.mediaGols + stats.fora.mediaGols) / 2
   const mediaPonderada = mediaRecente * 0.6 + stats.h2h.mediaGols * 0.4
 
-  // Distribuição de Poisson para Over/Under 2.5
   const lambda = mediaPonderada
   const p0 = Math.exp(-lambda)
   const p1 = p0 * lambda
@@ -483,7 +540,6 @@ function calcularEdge(stats) {
   const probUnder25 = p0 + p1 + p2
   const probOver25 = 1 - probUnder25
 
-  // BTTS ponderado
   const bttsForma = (stats.casa.btts + stats.fora.btts) / 2
   const probBTTS = bttsForma * 0.6 + stats.h2h.btts * 0.4
 
@@ -567,7 +623,6 @@ function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno, performan
 
   const secaoResultado = turno === 'manha' ? 'RESULTADO DE ONTEM\n' + resultadoOntem + '\n\n---\n' : ''
 
-  // Qualidade do dia baseada no edge medio
   const edgeMedio = apostas.reduce(function(sum, a) { return sum + a.edge }, 0) / apostas.length
   const edgePct = Math.round(edgeMedio * 100)
   let qualidadeDia
@@ -624,12 +679,30 @@ async function runAgent(turno) {
   console.log('\n[' + new Date().toISOString() + '] Agente iniciado - turno: ' + turno)
 
   try {
+    // CORREÇÃO DE ORDEM: no turno manhã, carregar apostas/resultados de ontem ANTES de salvar as de hoje
+    let apostasOntemParaInstagram = null
+    let resultadosReaisParaInstagram = []
     let resultadoOntem = ''
+
     if (turno === 'manha') {
+      // 1. Carrega apostas de ontem do Supabase
+      apostasOntemParaInstagram = await carregarApostasOntemSupabase()
+
+      // 2. Busca resultados das apostas de ontem
+      if (apostasOntemParaInstagram && apostasOntemParaInstagram.length) {
+        for (const a of apostasOntemParaInstagram) {
+          const res = await buscarResultadoPartida(a.matchId)
+          resultadosReaisParaInstagram.push(res)
+        }
+        await salvarResultadosSupabase(apostasOntemParaInstagram, resultadosReaisParaInstagram)
+      }
+
+      // 3. Gera texto do resultado para incluir na mensagem Telegram
       resultadoOntem = await gerarResultadoOntem()
       console.log('Resultado ontem: ' + resultadoOntem)
     }
 
+    // 4. Busca jogos para análise de HOJE
     let jogos = []
     if (turno === 'manha') {
       const todosJogos = await buscarJogosProximosDias()
@@ -655,7 +728,6 @@ async function runAgent(turno) {
 
     const todasApostas = []
     const jogosComBaixoEdge = []
-    // Limite reduzido para respeitar rate limit (3 reqs por jogo: casa + fora + h2h)
     const jogosFiltrados = jogos.slice(0, 15)
 
     for (const jogo of jogosFiltrados) {
@@ -696,9 +768,8 @@ async function runAgent(turno) {
     const top5 = todasApostas.slice(0, 5)
     const jogoParaEvitar = jogosComBaixoEdge[0] || null
 
-    // Salva apostas em todos os turnos para o monitor conseguir rastrear
-    salvarApostasDeHoje(top5)
-    await salvarApostasSupabase(top5, turno)
+    // 5. Salva apostas de HOJE no Supabase (após já ter processado as de ontem)
+    await salvarApostasHojeSupabase(top5, turno)
 
     console.log(top5.length + ' value bets encontrados')
 
@@ -708,17 +779,9 @@ async function runAgent(turno) {
 
     await enviarTelegram(mensagem)
 
+    // 6. Posta no Instagram com dados de ontem (turno manhã)
     if (turno === 'manha') {
-      const apostasOntem = carregarApostasDeOntem()
-      const resultadosReais = []
-      if (apostasOntem && apostasOntem.length) {
-        for (const a of apostasOntem) {
-          const res = await buscarResultadoPartida(a.matchId)
-          resultadosReais.push(res)
-        }
-        await salvarResultadosSupabase(apostasOntem, resultadosReais)
-      }
-      await postarInstagram(apostasOntem, resultadosReais, turno)
+      await postarInstagram(apostasOntemParaInstagram, resultadosReaisParaInstagram, turno)
     }
 
   } catch (err) {
@@ -740,8 +803,7 @@ async function runContexto() {
       console.log('Nenhum jogo para post de contexto.')
       return
     }
-    const jogoDestaque = jogos[0]
-    await postarContextoJogo(jogoDestaque)
+    await postarContextoJogo(jogos[0])
   } catch (err) {
     console.error('Erro no post de contexto:', err.message)
   }

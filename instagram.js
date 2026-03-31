@@ -1,18 +1,10 @@
 require('dotenv').config()
 const axios = require('axios')
 const { gerarESubirImagem, gerarESubirStory } = require('./gerarImagem')
+const { verificarAcerto } = require('./utils')
 
 const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
 const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
-
-function verificarAcerto(aposta, resultado) {
-  const totalGols = resultado.golsCasa + resultado.golsFora
-  const ambasMarcaram = resultado.golsCasa > 0 && resultado.golsFora > 0
-  if (aposta.mercado === 'Mais de 2.5 gols') return totalGols > 2
-  if (aposta.mercado === 'Menos de 2.5 gols') return totalGols < 3
-  if (aposta.mercado === 'Ambas marcam: SIM') return ambasMarcaram
-  return false
-}
 
 function gerarCaption(apostasOntem, resultados) {
   const hoje = new Date().toLocaleDateString('pt-BR')
@@ -83,7 +75,7 @@ async function publicarViaZernio(caption, imageUrl) {
   try {
     console.log('Publicando no Instagram via Zernio...')
 
-    const res = await axios.post('https://zernio.com/api/v1/posts', {
+    await axios.post('https://zernio.com/api/v1/posts', {
       platforms: [{ platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }],
       content: caption,
       mediaItems: [{ type: 'image', url: imageUrl }],
@@ -103,7 +95,6 @@ async function publicarViaZernio(caption, imageUrl) {
     return false
   }
 }
-
 
 async function publicarStoryViaZernio(imageUrl) {
   try {
@@ -151,11 +142,9 @@ async function postarInstagram(apostasOntem, resultados, turno) {
       return
     }
 
-    // Publica no feed
     const caption = gerarCaption(apostasOntem, resultados || [])
     await publicarViaZernio(caption, imageUrl)
 
-    // Gera e publica story 9:16
     console.log('Gerando story de resultado...')
     const storyUrl = await gerarESubirStory(apostasOntem || [], resultados || [])
     if (storyUrl) {

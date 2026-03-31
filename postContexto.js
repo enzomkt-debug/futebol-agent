@@ -1,19 +1,19 @@
 require('dotenv').config()
 const axios = require('axios')
 const path = require('path')
-const { createCanvas: _canvas, registerFont } = require('canvas')
-const { gerarESubirImagem } = require('./gerarImagem')
+const fs = require('fs')
+const { createCanvas, registerFont } = require('canvas')
+const { subirImagemGithub } = require('./utils')
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
+const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
+const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 
-// Registra fonte empacotada no repositorio
 try {
   registerFont(path.join(__dirname, 'fonts', 'DejaVuSans.ttf'), { family: 'DejaVu Sans', weight: 'normal' })
   registerFont(path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'), { family: 'DejaVu Sans', weight: 'bold' })
 } catch(e) {}
 const FONTE = 'DejaVu Sans'
-const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
-const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 
 async function gerarTextoComClaude(jogo) {
   try {
@@ -50,7 +50,7 @@ Retorne APENAS o texto do post, sem aspas, sem explicacoes.`
     })
 
     const texto = res.data.content[0].text.trim()
-    console.log('Texto gerado pelo Claude:', texto)
+    console.log('Texto gerado pelo Claude para contexto')
     return texto
 
   } catch (err) {
@@ -76,27 +76,20 @@ function gerarHashtags(liga) {
 }
 
 async function gerarImagemContexto(jogo) {
-  const { createCanvas } = require('canvas')
-  const fs = require('fs')
-  const path = require('path')
-
   const width = 1080
   const height = 1080
   const canvas = createCanvas(width, height)
   const ctx = canvas.getContext('2d')
 
-  // Fundo escuro elegante
   ctx.fillStyle = '#0d0d1a'
   ctx.fillRect(0, 0, width, height)
 
-  // Grade sutil
   ctx.strokeStyle = 'rgba(255,255,255,0.025)'
   ctx.lineWidth = 1
   for (let i = 0; i < width; i += 80) {
     ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, height); ctx.stroke()
   }
 
-  // Circulo decorativo
   ctx.fillStyle = '#e94560'
   ctx.globalAlpha = 0.05
   ctx.beginPath()
@@ -104,11 +97,9 @@ async function gerarImagemContexto(jogo) {
   ctx.fill()
   ctx.globalAlpha = 1
 
-  // Barra topo
   ctx.fillStyle = '#e94560'
   ctx.fillRect(0, 0, width, 8)
 
-  // Header
   ctx.fillStyle = '#e94560'
   ctx.font = 'bold 48px ' + FONTE
   ctx.fillText('Gol Match BR', 70, 85)
@@ -117,7 +108,6 @@ async function gerarImagemContexto(jogo) {
   ctx.font = '22px ' + FONTE
   ctx.fillText('@golmatchbr', 70, 118)
 
-  // Tag da liga
   const ligaCurta = jogo.liga.length > 25 ? jogo.liga.substring(0, 25) + '...' : jogo.liga
   ctx.fillStyle = '#e94560'
   ctx.font = 'bold 20px ' + FONTE
@@ -125,17 +115,14 @@ async function gerarImagemContexto(jogo) {
   ctx.fillText(ligaCurta.toUpperCase(), 1010, 85)
   ctx.textAlign = 'left'
 
-  // Linha
   ctx.fillStyle = '#e94560'
   ctx.fillRect(70, 140, 940, 2)
 
-  // Label ANALISE DO DIA (removido JOGO DO DIA para ser mais neutro)
   ctx.fillStyle = '#555566'
   ctx.font = 'bold 20px ' + FONTE
   ctx.textAlign = 'center'
   ctx.fillText('ANALISE DO DIA', 540, 210)
 
-  // VS central
   const maxLen = 18
   const casaNome = jogo.timeCasa.length > maxLen ? jogo.timeCasa.substring(0, maxLen) : jogo.timeCasa
   const foraNome = jogo.timeFora.length > maxLen ? jogo.timeFora.substring(0, maxLen) : jogo.timeFora
@@ -152,7 +139,6 @@ async function gerarImagemContexto(jogo) {
   ctx.font = 'bold 72px ' + FONTE
   ctx.fillText(foraNome, 540, 470)
 
-  // Data
   const dataFormatada = new Date(jogo.dataJogo + 'T12:00:00').toLocaleDateString('pt-BR', {
     weekday: 'long', day: '2-digit', month: 'long'
   })
@@ -160,11 +146,9 @@ async function gerarImagemContexto(jogo) {
   ctx.font = '26px ' + FONTE
   ctx.fillText(dataFormatada, 540, 535)
 
-  // Linha divisoria
   ctx.fillStyle = '#222233'
   ctx.fillRect(70, 565, 940, 1)
 
-  // Caixa de curiosidade
   ctx.fillStyle = '#1a1a2e'
   const boxY = 590
   ctx.beginPath()
@@ -189,7 +173,6 @@ async function gerarImagemContexto(jogo) {
   ctx.font = '20px ' + FONTE
   ctx.fillText('Brasileirao · Champions · Premier · Libertadores', 540, 760)
 
-  // CTA
   ctx.fillStyle = '#e94560'
   ctx.beginPath()
   ctx.roundRect(215, 820, 650, 70, 35)
@@ -208,12 +191,9 @@ async function gerarImagemContexto(jogo) {
   ctx.fillText('golmatchbr · analise estatistica de futebol', 540, 975)
 
   ctx.textAlign = 'left'
-
-  // Barra rodape
   ctx.fillStyle = '#e94560'
   ctx.fillRect(0, 1072, width, 8)
 
-  // Salva
   const assetsDir = path.join(__dirname, 'assets')
   if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir)
 
@@ -223,48 +203,9 @@ async function gerarImagemContexto(jogo) {
   return caminhoLocal
 }
 
-async function subirImagemGithub(caminhoLocal) {
-  const GITHUB_TOKEN = process.env.GITHUB_TOKEN
-  const GITHUB_REPO = process.env.GITHUB_REPO
-
-  if (!GITHUB_TOKEN || !GITHUB_REPO) return null
-
-  try {
-    const conteudo = require('fs').readFileSync(caminhoLocal)
-    const base64 = conteudo.toString('base64')
-    const nomeArquivo = 'card-contexto.png'
-
-    let sha = null
-    try {
-      const getRes = await axios.get(
-        'https://api.github.com/repos/' + GITHUB_REPO + '/contents/assets/' + nomeArquivo,
-        { headers: { Authorization: 'token ' + GITHUB_TOKEN } }
-      )
-      sha = getRes.data.sha
-    } catch (e) {}
-
-    const body = { message: 'Atualiza card contexto', content: base64 }
-    if (sha) body.sha = sha
-
-    await axios.put(
-      'https://api.github.com/repos/' + GITHUB_REPO + '/contents/assets/' + nomeArquivo,
-      body,
-      { headers: { Authorization: 'token ' + GITHUB_TOKEN } }
-    )
-
-    const urlPublica = 'https://raw.githubusercontent.com/' + GITHUB_REPO + '/main/assets/' + nomeArquivo + '?t=' + Date.now()
-    console.log('Imagem de contexto subida:', urlPublica)
-    return urlPublica
-
-  } catch (err) {
-    console.error('Erro ao subir imagem de contexto:', err.message)
-    return null
-  }
-}
-
 async function publicarViaZernio(caption, imageUrl) {
   try {
-    const res = await axios.post('https://zernio.com/api/v1/posts', {
+    await axios.post('https://zernio.com/api/v1/posts', {
       platforms: [{ platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }],
       content: caption,
       mediaItems: [{ type: 'image', url: imageUrl }],
@@ -297,22 +238,18 @@ async function postarContextoJogo(jogoDestaque) {
   try {
     console.log('Gerando post de contexto para:', jogoDestaque.timeCasa + ' x ' + jogoDestaque.timeFora)
 
-    // Gera texto com Claude
     const texto = await gerarTextoComClaude(jogoDestaque)
     if (!texto) return
 
-    // Hashtags
     const hashtags = gerarHashtags(jogoDestaque.liga)
     const caption = texto + '\n\n' + hashtags
 
-    // Gera imagem
     const caminhoLocal = await gerarImagemContexto(jogoDestaque)
 
-    // Sobe para GitHub
-    const imageUrl = await subirImagemGithub(caminhoLocal)
+    // [skip ci] incluído automaticamente via utils.subirImagemGithub
+    const imageUrl = await subirImagemGithub(axios, caminhoLocal, 'card-contexto.png')
     if (!imageUrl) return
 
-    // Publica
     await publicarViaZernio(caption, imageUrl)
 
   } catch (err) {

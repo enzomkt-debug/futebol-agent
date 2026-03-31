@@ -3,16 +3,13 @@ const axios = require('axios')
 const { createCanvas, loadImage, registerFont } = require('canvas')
 const fs = require('fs')
 const path = require('path')
-const { gerarESubirStory } = require('./gerarImagem')
+const { subirImagemGithub } = require('./utils')
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
 const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN
-const GITHUB_REPO = process.env.GITHUB_REPO
 
-// Registra fonte empacotada no repositorio — funciona em qualquer ambiente
 try {
   registerFont(path.join(__dirname, 'fonts', 'DejaVuSans.ttf'), { family: 'DejaVu Sans', weight: 'normal' })
   registerFont(path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'), { family: 'DejaVu Sans', weight: 'bold' })
@@ -27,11 +24,7 @@ async function buscarImagemUnsplash(query) {
   try {
     const res = await axios.get('https://api.unsplash.com/photos/random', {
       headers: { Authorization: 'Client-ID ' + UNSPLASH_ACCESS_KEY },
-      params: {
-        query: query,
-        orientation: 'squarish',
-        content_filter: 'high'
-      }
+      params: { query: query, orientation: 'squarish', content_filter: 'high' }
     })
     return res.data.urls.regular
   } catch (err) {
@@ -75,9 +68,8 @@ QUERY_IMAGEM: [3 palavras em ingles para foto no Unsplash, ex: football stadium 
     })
 
     const resposta = res.data.content[0].text.trim()
-    console.log('=== RESPOSTA CLAUDE ===\n' + resposta + '\n===')
     const linhasResposta = resposta.split('\n')
-    
+
     let dado = 'Futebol com dados e estatisticas'
     let confronto = ''
     let resumo = ''
@@ -87,28 +79,21 @@ QUERY_IMAGEM: [3 palavras em ingles para foto no Unsplash, ex: football stadium 
     linhasResposta.forEach(function(linha) {
       if (linha.startsWith('DADO:')) dado = linha.replace('DADO:', '').trim()
       else if (linha.startsWith('CONFRONTO:')) confronto = linha.replace('CONFRONTO:', '').trim()
-      else if (linha.startsWith('RESUMO:')) resumo = linha.replace('RESUMO:', '').trim()
       else if (linha.startsWith('QUERY_IMAGEM:')) query = linha.replace('QUERY_IMAGEM:', '').trim()
     })
 
-    // Extrai TEXTO entre TEXTO: e QUERY_IMAGEM:
     const idxTexto = resposta.indexOf('TEXTO:')
     const idxQuery = resposta.indexOf('QUERY_IMAGEM:')
     if (idxTexto >= 0 && idxQuery > idxTexto) {
       texto = resposta.substring(idxTexto + 6, idxQuery).trim()
     }
 
-    // Extrai RESUMO entre RESUMO: e TEXTO:
     const idxResumo = resposta.indexOf('RESUMO:')
     if (idxResumo >= 0 && idxTexto > idxResumo) {
       resumo = resposta.substring(idxResumo + 7, idxTexto).trim()
     }
 
-    console.log('Dado:', dado)
-    console.log('Confronto:', confronto)
-    console.log('Resumo:', resumo)
-    console.log('Query Unsplash:', query)
-
+    console.log('Conteudo educativo gerado — Dado:', dado, '| Confronto:', confronto)
     return { dado, confronto, resumo, texto, query }
 
   } catch (err) {
@@ -117,7 +102,7 @@ QUERY_IMAGEM: [3 palavras em ingles para foto no Unsplash, ex: football stadium 
   }
 }
 
-// ─── GERA CARD COM FOTO DE FUNDO ───
+// ─── GERA CARD FEED 1:1 ───
 
 async function gerarCardEducativo(dado, confronto, imagemUrl) {
   const width = 1080
@@ -125,11 +110,9 @@ async function gerarCardEducativo(dado, confronto, imagemUrl) {
   const canvas = createCanvas(width, height)
   const ctx = canvas.getContext('2d')
 
-  // Fundo escuro fallback
   ctx.fillStyle = '#0d0d1a'
   ctx.fillRect(0, 0, width, height)
 
-  // Foto de fundo
   if (imagemUrl) {
     try {
       const img = await loadImage(imagemUrl)
@@ -139,15 +122,12 @@ async function gerarCardEducativo(dado, confronto, imagemUrl) {
     }
   }
 
-  // Overlay escuro geral
   ctx.fillStyle = 'rgba(0,0,0,0.7)'
   ctx.fillRect(0, 0, width, height)
 
-  // ─── Calcula o texto primeiro para definir o tamanho do card ───
   ctx.textAlign = 'center'
   ctx.fillStyle = '#00c48c'
 
-  // Fonte inicial grande, quebra em linhas
   let tamanhoFonte = 88
   ctx.font = 'bold ' + tamanhoFonte + 'px ' + FONTE
 
@@ -182,11 +162,9 @@ async function gerarCardEducativo(dado, confronto, imagemUrl) {
   const fonteConfronto = 40
   const espacoLinha = 25
   const alturaLinhas = linhasDado.length * (tamanhoFonte + 12)
-  // cardH = padding topo + linhas do dado + espaço até linha + linha(2px) + espaço + confronto + padding baixo
   const cardH = paddingV + alturaLinhas + tamanhoFonte + espacoLinha + 2 + 15 + fonteConfronto + paddingV
   const cardY = (1080 - cardH) / 2
 
-  // Desenha o card com tamanho calculado
   ctx.fillStyle = 'rgba(0,0,0,0.85)'
   ctx.beginPath()
   ctx.roundRect(60, cardY, 960, cardH, 24)
@@ -197,102 +175,35 @@ async function gerarCardEducativo(dado, confronto, imagemUrl) {
   ctx.roundRect(60, cardY, 960, cardH, 24)
   ctx.stroke()
 
-  // Dado dentro do card — branco com sombra para destacar
   ctx.shadowColor = '#00c48c'
   ctx.shadowBlur = 20
   ctx.fillStyle = '#ffffff'
-  // yBase = topo do card + padding + altura de uma linha (baseline da primeira linha)
   let yBase = cardY + paddingV + tamanhoFonte
   linhasDado.forEach(function(linha) {
     ctx.fillText(linha, 540, yBase)
     yBase += tamanhoFonte + 12
   })
   ctx.shadowBlur = 0
-  // yBase agora aponta para depois da última linha
 
-  // Linha divisoria — posição fixa relativa ao fim das linhas
   const yLinha = yBase + espacoLinha
   ctx.fillStyle = 'rgba(255,255,255,0.25)'
   ctx.fillRect(160, yLinha, 760, 2)
 
-  // Confronto — baseline 15px abaixo da linha + altura da fonte
   ctx.fillStyle = '#ffffff'
   ctx.font = 'bold ' + fonteConfronto + 'px ' + FONTE
   const yConfrontoFinal = cardY + cardH - paddingV + fonteConfronto - 10
-console.log('BOX: topo=' + cardY + ' fundo=' + (cardY+cardH) + ' confronto_y=' + yConfrontoFinal)
-ctx.fillText(confronto, 540, yConfrontoFinal)
+  ctx.fillText(confronto, 540, yConfrontoFinal)
 
-  // Salva
   const assetsDir = path.join(__dirname, 'assets')
   if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir)
 
   const caminhoLocal = path.join(assetsDir, 'card-educativo.png')
   fs.writeFileSync(caminhoLocal, canvas.toBuffer('image/png'))
-  console.log('Card educativo gerado:', caminhoLocal)
+  console.log('Card educativo gerado')
   return caminhoLocal
 }
 
-// ─── SOBE PARA GITHUB ───
-
-async function subirGithub(caminhoLocal) {
-  if (!GITHUB_TOKEN || !GITHUB_REPO) return null
-
-  try {
-    const conteudo = fs.readFileSync(caminhoLocal)
-    const base64 = conteudo.toString('base64')
-    const nomeArquivo = 'card-educativo.png'
-
-    let sha = null
-    try {
-      const getRes = await axios.get(
-        'https://api.github.com/repos/' + GITHUB_REPO + '/contents/assets/' + nomeArquivo,
-        { headers: { Authorization: 'token ' + GITHUB_TOKEN } }
-      )
-      sha = getRes.data.sha
-    } catch (e) {}
-
-    const body = { message: 'Atualiza card educativo', content: base64 }
-    if (sha) body.sha = sha
-
-    await axios.put(
-      'https://api.github.com/repos/' + GITHUB_REPO + '/contents/assets/' + nomeArquivo,
-      body,
-      { headers: { Authorization: 'token ' + GITHUB_TOKEN } }
-    )
-
-    const urlPublica = 'https://raw.githubusercontent.com/' + GITHUB_REPO + '/main/assets/' + nomeArquivo + '?t=' + Date.now()
-    console.log('Card educativo subido:', urlPublica)
-    return urlPublica
-
-  } catch (err) {
-    console.error('Erro ao subir card educativo:', err.message)
-    return null
-  }
-}
-
-// ─── PUBLICA NO INSTAGRAM ───
-
-async function publicarViaZernio(caption, imageUrl) {
-  try {
-    await axios.post('https://zernio.com/api/v1/posts', {
-      platforms: [{ platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }],
-      content: caption,
-      mediaItems: [{ type: 'image', url: imageUrl }],
-      publishNow: true
-    }, {
-      headers: {
-        'Authorization': 'Bearer ' + ZERNIO_API_KEY,
-        'Content-Type': 'application/json'
-      }
-    })
-    console.log('Post educativo publicado no Instagram!')
-    return true
-  } catch (err) {
-    console.error('Erro ao publicar:', err.response?.data || err.message)
-    return false
-  }
-}
-
+// ─── GERA CARD STORY 9:16 ───
 
 async function gerarCardEducativoStory(dado, confronto, resumo, imagemUrl) {
   const width = 1080
@@ -312,7 +223,6 @@ async function gerarCardEducativoStory(dado, confronto, resumo, imagemUrl) {
     }
   }
 
-  // Overlay gradiente
   const gradient = ctx.createLinearGradient(0, 0, 0, height)
   gradient.addColorStop(0, 'rgba(0,0,0,0.6)')
   gradient.addColorStop(0.35, 'rgba(0,0,0,0.4)')
@@ -320,16 +230,12 @@ async function gerarCardEducativoStory(dado, confronto, resumo, imagemUrl) {
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, width, height)
 
-  // Sem header — story minimalista
-
-  // ─── BLOCO DO DADO ───
   const cardY = 500
   const maxLargura = 900
 
   ctx.textAlign = 'center'
   ctx.fillStyle = '#00c48c'
 
-  // Quebra o dado em linhas
   let tamanhoFonte = 90
   ctx.font = 'bold ' + tamanhoFonte + 'px ' + FONTE
   const palavras = dado.split(' ')
@@ -355,7 +261,6 @@ async function gerarCardEducativoStory(dado, confronto, resumo, imagemUrl) {
     yDado += tamanhoFonte + 16
   })
 
-  // ─── CONFRONTO ───
   const yConfronto = yDado + 40
   ctx.fillStyle = 'rgba(255,255,255,0.3)'
   ctx.fillRect(160, yConfronto - 30, 760, 2)
@@ -363,7 +268,6 @@ async function gerarCardEducativoStory(dado, confronto, resumo, imagemUrl) {
   ctx.font = 'bold 52px ' + FONTE
   ctx.fillText(confronto, 540, yConfronto + 20)
 
-  // ─── RESUMO ─── (com quebra automática e margem lateral)
   const yResumoInicio = yConfronto + 100
   ctx.fillStyle = 'rgba(255,255,255,0.85)'
   ctx.font = '34px ' + FONTE
@@ -386,57 +290,41 @@ async function gerarCardEducativoStory(dado, confronto, resumo, imagemUrl) {
     yResumo += 46
   })
 
-  // ─── CTA — respiro de 350px do fundo para icones do Instagram ───
   ctx.fillStyle = '#00c48c'
   ctx.font = 'bold 32px ' + FONTE
   ctx.fillText('Analise completa no Telegram - Link na bio', 540, 1550)
-
-  // Sem rodape — story minimalista
 
   const assetsDir = path.join(__dirname, 'assets')
   if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir)
 
   const caminhoLocal = path.join(assetsDir, 'card-educativo-story.png')
   fs.writeFileSync(caminhoLocal, canvas.toBuffer('image/png'))
-  console.log('Story educativo gerado:', caminhoLocal)
+  console.log('Story educativo gerado')
   return caminhoLocal
 }
 
-async function subirGithubArquivo(caminhoLocal, nomeArquivo) {
-  if (!GITHUB_TOKEN || !GITHUB_REPO) return null
+// ─── PUBLISH ───
 
+async function publicarViaZernio(caption, imageUrl) {
   try {
-    const conteudo = fs.readFileSync(caminhoLocal)
-    const base64 = conteudo.toString('base64')
-
-    let sha = null
-    try {
-      const getRes = await axios.get(
-        'https://api.github.com/repos/' + GITHUB_REPO + '/contents/assets/' + nomeArquivo,
-        { headers: { Authorization: 'token ' + GITHUB_TOKEN } }
-      )
-      sha = getRes.data.sha
-    } catch (e) {}
-
-    const body = { message: 'Atualiza ' + nomeArquivo, content: base64 }
-    if (sha) body.sha = sha
-
-    await axios.put(
-      'https://api.github.com/repos/' + GITHUB_REPO + '/contents/assets/' + nomeArquivo,
-      body,
-      { headers: { Authorization: 'token ' + GITHUB_TOKEN } }
-    )
-
-    const urlPublica = 'https://raw.githubusercontent.com/' + GITHUB_REPO + '/main/assets/' + nomeArquivo + '?t=' + Date.now()
-    console.log('Arquivo subido:', urlPublica)
-    return urlPublica
-
+    await axios.post('https://zernio.com/api/v1/posts', {
+      platforms: [{ platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }],
+      content: caption,
+      mediaItems: [{ type: 'image', url: imageUrl }],
+      publishNow: true
+    }, {
+      headers: {
+        'Authorization': 'Bearer ' + ZERNIO_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    })
+    console.log('Post educativo publicado no Instagram!')
+    return true
   } catch (err) {
-    console.error('Erro ao subir arquivo:', err.message)
-    return null
+    console.error('Erro ao publicar:', err.response?.data || err.message)
+    return false
   }
 }
-
 
 async function publicarStoryViaZernio(imageUrl) {
   try {
@@ -493,33 +381,27 @@ async function postarConteudoEducativo(jogos) {
   try {
     console.log('Gerando conteudo educativo...')
 
-    // 1. Claude gera texto e query de imagem
     const resultado = await gerarTextoEducativo(jogos)
     if (!resultado) return
 
     const { dado, confronto, resumo, texto, query } = resultado
 
-    // 2. Busca imagem no Unsplash
     console.log('Buscando imagem no Unsplash:', query)
     const imagemUrl = await buscarImagemUnsplash(query)
 
-    // 3. Gera card
     const caminhoLocal = await gerarCardEducativo(dado, confronto, imagemUrl)
 
-    // 4. Sobe para GitHub
-    const urlPublica = await subirGithub(caminhoLocal)
+    // [skip ci] incluído automaticamente via utils.subirImagemGithub
+    const urlPublica = await subirImagemGithub(axios, caminhoLocal, 'card-educativo.png')
     if (!urlPublica) return
 
-    // 5. Publica no feed
     const hashtags = gerarHashtags(texto)
     const caption = texto + '\n\n' + hashtags
     await publicarViaZernio(caption, urlPublica)
 
-    // 6. Gera e publica story 9:16 com a mesma foto de fundo
     console.log('Gerando story educativo...')
     const storyLocal = await gerarCardEducativoStory(dado, confronto, resumo, imagemUrl)
-    const storyPath = path.join(__dirname, 'assets', 'card-educativo-story.png')
-    const storyUrl = await subirGithubArquivo(storyLocal, 'card-educativo-story.png')
+    const storyUrl = await subirImagemGithub(axios, storyLocal, 'card-educativo-story.png')
     if (storyUrl) {
       await publicarStoryViaZernio(storyUrl)
     }
@@ -530,4 +412,6 @@ async function postarConteudoEducativo(jogos) {
 }
 
 module.exports = { postarConteudoEducativo }
-postarConteudoEducativo([{ timeCasa: 'Palmeiras', timeFora: 'Grêmio', liga: 'Campeonato Brasileiro Série A', dataJogo: '2026-04-03' }])
+
+// CORREÇÃO: linha de auto-execução removida — causava execução imediata no deploy
+// A função é chamada apenas pelo cron em index.js

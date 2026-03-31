@@ -2,17 +2,14 @@ const { createCanvas, registerFont } = require('canvas')
 const fs = require('fs')
 const path = require('path')
 const axios = require('axios')
+const { verificarAcerto, subirImagemGithub } = require('./utils')
 
 // Registra fonte empacotada no repositorio — funciona em qualquer ambiente
 try {
   const fontPath = path.join(__dirname, 'fonts', 'DejaVuSans.ttf')
   const fontBoldPath = path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf')
-  console.log('__dirname:', __dirname)
-  console.log('Tentando carregar fonte em:', fontPath)
-  console.log('Arquivo existe?', fs.existsSync(fontPath))
   registerFont(fontPath, { family: 'DejaVu Sans', weight: 'normal' })
   registerFont(fontBoldPath, { family: 'DejaVu Sans', weight: 'bold' })
-  console.log('Fonte DejaVu registrada com sucesso!')
 } catch(e) {
   console.log('Aviso: erro ao registrar fonte DejaVu:', e.message)
 }
@@ -30,15 +27,6 @@ function arredondarRetangulo(ctx, x, y, w, h, r) {
   ctx.lineTo(x, y + r)
   ctx.quadraticCurveTo(x, y, x + r, y)
   ctx.closePath()
-}
-
-function verificarAcerto(aposta, resultado) {
-  const totalGols = resultado.golsCasa + resultado.golsFora
-  const ambasMarcaram = resultado.golsCasa > 0 && resultado.golsFora > 0
-  if (aposta.mercado === 'Mais de 2.5 gols') return totalGols > 2
-  if (aposta.mercado === 'Menos de 2.5 gols') return totalGols < 3
-  if (aposta.mercado === 'Ambas marcam: SIM') return ambasMarcaram
-  return false
 }
 
 async function gerarImagem(apostas, turno, resultados) {
@@ -127,8 +115,6 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.textAlign = 'left'
 
   } else if (isVerde) {
-    // ─── TEMPLATE VERDE ───
-
     ctx.fillStyle = '#00c48c'
     ctx.globalAlpha = 0.08
     ctx.beginPath()
@@ -136,7 +122,6 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.fill()
     ctx.globalAlpha = 1
 
-    // Circulo verde em vez de simbolo
     ctx.fillStyle = '#00c48c'
     ctx.beginPath()
     ctx.arc(540, 300, 70, 0, Math.PI * 2)
@@ -219,8 +204,6 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.textAlign = 'left'
 
   } else {
-    // ─── TEMPLATE VERMELHO ───
-
     ctx.fillStyle = '#e94560'
     ctx.globalAlpha = 0.08
     ctx.beginPath()
@@ -228,7 +211,6 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.fill()
     ctx.globalAlpha = 1
 
-    // Circulo vermelho em vez de simbolo
     ctx.fillStyle = '#e94560'
     ctx.beginPath()
     ctx.arc(540, 290, 70, 0, Math.PI * 2)
@@ -242,146 +224,95 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.font = 'bold 80px ' + FONTE
     ctx.fillText('NAO CONFIRMOU', 540, 440)
 
+    const jogoNome = apostas[0].jogo.length > 32 ? apostas[0].jogo.substring(0, 32) + '...' : apostas[0].jogo
     ctx.fillStyle = '#888899'
     ctx.font = '26px ' + FONTE
-    const jogoNome = apostas[0].jogo.length > 32 ? apostas[0].jogo.substring(0, 32) + '...' : apostas[0].jogo
-    ctx.fillText(jogoNome, 540, 500)
+    ctx.fillText(jogoNome, 540, 510)
 
     const placar = destaqueResultado.golsCasa + ' x ' + destaqueResultado.golsFora
     ctx.fillStyle = '#ffffff'
     ctx.font = 'bold 32px ' + FONTE
-    ctx.fillText(placar, 540, 545)
+    ctx.fillText(placar, 540, 555)
     ctx.textAlign = 'left'
 
     ctx.fillStyle = COR_CARD
-    arredondarRetangulo(ctx, 70, 575, 940, 145, 16)
+    arredondarRetangulo(ctx, 70, 585, 940, 150, 16)
     ctx.fill()
     ctx.strokeStyle = '#e94560'
     ctx.lineWidth = 1.5
-    arredondarRetangulo(ctx, 70, 575, 940, 145, 16)
+    arredondarRetangulo(ctx, 70, 585, 940, 150, 16)
     ctx.stroke()
 
     const probPct = Math.round((1/apostas[0].odd + apostas[0].edge)*100)
+
     ctx.fillStyle = '#ffffff'
     ctx.font = 'bold 24px ' + FONTE
     ctx.textAlign = 'center'
-    ctx.fillText('Mercado: ' + apostas[0].mercado, 540, 615)
+    ctx.fillText('Mercado: ' + apostas[0].mercado, 540, 625)
+
     ctx.fillStyle = '#888899'
     ctx.font = '22px ' + FONTE
-    ctx.fillText('Modelo estimou ' + probPct + '% de probabilidade.', 540, 648)
+    ctx.fillText('Modelo estimou ' + probPct + '% de probabilidade', 540, 660)
     ctx.fillStyle = '#ccccdd'
-    ctx.font = '22px ' + FONTE
-    ctx.fillText((100 - probPct) + '% das vezes nao se confirma. Faz parte.', 540, 680)
+    ctx.fillText((100-probPct) + '% das vezes nao se confirma. Faz parte.', 540, 695)
     ctx.fillStyle = '#e94560'
     ctx.font = 'bold 22px ' + FONTE
-    ctx.fillText('Variancia estatistica faz parte da analise.', 540, 712)
+    ctx.fillText('Variancia estatistica e parte do metodo.', 540, 724)
     ctx.textAlign = 'left'
 
     ctx.fillStyle = COR_CARD
-    arredondarRetangulo(ctx, 70, 738, 940, 80, 14)
+    arredondarRetangulo(ctx, 70, 755, 940, 75, 14)
     ctx.fill()
     ctx.strokeStyle = '#00c48c'
     ctx.lineWidth = 0.5
-    arredondarRetangulo(ctx, 70, 738, 940, 80, 14)
+    arredondarRetangulo(ctx, 70, 755, 940, 75, 14)
     ctx.stroke()
 
     ctx.fillStyle = '#888899'
     ctx.font = '22px ' + FONTE
     ctx.textAlign = 'center'
-    ctx.fillText('Historico dos ultimos 30 dias:', 540, 768)
+    ctx.fillText('Historico dos ultimos 30 dias:', 540, 785)
     ctx.fillStyle = '#00c48c'
     ctx.font = 'bold 26px ' + FONTE
-    ctx.fillText(acertos + '/' + total + ' corretas - Taxa: ' + taxa + '% - Metodo consistente', 540, 802)
+    ctx.fillText(acertos + '/' + total + ' corretas - Taxa: ' + taxa + '%', 540, 815)
     ctx.textAlign = 'left'
 
     ctx.fillStyle = '#e94560'
-    arredondarRetangulo(ctx, 180, 848, 720, 75, 38)
+    arredondarRetangulo(ctx, 180, 860, 720, 75, 38)
     ctx.fill()
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 24px ' + FONTE
+    ctx.font = 'bold 26px ' + FONTE
     ctx.textAlign = 'center'
-    ctx.fillText('ASSINAR - LINK NA BIO', 540, 893)
+    ctx.fillText('ASSINAR - LINK NA BIO', 540, 905)
 
-    ctx.fillStyle = '#888899'
+    ctx.fillStyle = '#555566'
     ctx.font = '22px ' + FONTE
-    ctx.fillText('Variancia faz parte da analise estatistica.', 540, 955)
+    ctx.fillText('Variancia faz parte da analise estatistica.', 540, 970)
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 22px ' + FONTE
-    ctx.fillText('O historico de 30 dias fala por si so.', 540, 990)
+    ctx.font = 'bold 24px ' + FONTE
+    ctx.fillText('O historico de 30 dias fala por si so.', 540, 1005)
     ctx.textAlign = 'left'
   }
 
-  // Rodape
-  ctx.fillStyle = 'rgba(255,255,255,0.04)'
-  ctx.fillRect(0, 1042, width, 38)
-  ctx.fillStyle = COR_TEMA
-  ctx.font = 'bold 20px ' + FONTE
+  // Barra rodape
+  ctx.fillStyle = 'rgba(255,255,255,0.03)'
+  ctx.fillRect(0, 1040, width, 32)
+  ctx.fillStyle = '#333344'
+  ctx.font = '18px ' + FONTE
   ctx.textAlign = 'center'
-  ctx.fillText('golmatchbr.com.br - analise estatistica de futebol - baseado em dados', 540, 1067)
+  ctx.fillText('golmatchbr.com.br - analise estatistica de futebol', 540, 1062)
   ctx.textAlign = 'left'
-
   ctx.fillStyle = COR_TEMA
   ctx.fillRect(0, 1072, width, 8)
 
   const assetsDir = path.join(__dirname, 'assets')
   if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir)
 
-  const nomeArquivo = 'card-resultado.png'
-  const caminhoLocal = path.join(assetsDir, nomeArquivo)
+  const caminhoLocal = path.join(assetsDir, 'card-resultado.png')
   fs.writeFileSync(caminhoLocal, canvas.toBuffer('image/png'))
-  console.log('Imagem gerada: ' + caminhoLocal)
-
+  console.log('Imagem de resultado gerada')
   return caminhoLocal
 }
-
-async function subirImagemGithub(caminhoLocal, turno) {
-  const GITHUB_TOKEN = process.env.GITHUB_TOKEN
-  const GITHUB_REPO = process.env.GITHUB_REPO
-
-  if (!GITHUB_TOKEN || !GITHUB_REPO) {
-    console.log('GitHub token nao configurado.')
-    return null
-  }
-
-  try {
-    const conteudo = fs.readFileSync(caminhoLocal)
-    const base64 = conteudo.toString('base64')
-    const nomeArquivo = 'card-resultado.png'
-
-    let sha = null
-    try {
-      const getRes = await axios.get(
-        'https://api.github.com/repos/' + GITHUB_REPO + '/contents/assets/' + nomeArquivo,
-        { headers: { Authorization: 'token ' + GITHUB_TOKEN } }
-      )
-      sha = getRes.data.sha
-    } catch (e) {}
-
-    const body = { message: 'Atualiza card resultado', content: base64 }
-    if (sha) body.sha = sha
-
-    await axios.put(
-      'https://api.github.com/repos/' + GITHUB_REPO + '/contents/assets/' + nomeArquivo,
-      body,
-      { headers: { Authorization: 'token ' + GITHUB_TOKEN } }
-    )
-
-    const urlPublica = 'https://raw.githubusercontent.com/' + GITHUB_REPO + '/main/assets/' + nomeArquivo + '?t=' + Date.now()
-    console.log('Imagem subida para GitHub: ' + urlPublica)
-    return urlPublica
-
-  } catch (err) {
-    console.error('Erro ao subir imagem:', err.response?.data || err.message)
-    return null
-  }
-}
-
-async function gerarESubirImagem(apostas, turno, resultados) {
-  const caminhoLocal = await gerarImagem(apostas, turno, resultados)
-  const urlPublica = await subirImagemGithub(caminhoLocal, turno)
-  return urlPublica
-}
-
 
 async function gerarImagemStory(apostas, resultados) {
   const width = 1080
@@ -389,10 +320,10 @@ async function gerarImagemStory(apostas, resultados) {
   const canvas = createCanvas(width, height)
   const ctx = canvas.getContext('2d')
 
-  let destaqueAcertou = false
-  let destaqueResultado = null
   let acertos = 0
   let total = 0
+  let destaqueAcertou = false
+  let destaqueResultado = null
 
   if (apostas && apostas.length && resultados && resultados.length) {
     for (let i = 0; i < apostas.length; i++) {
@@ -415,41 +346,26 @@ async function gerarImagemStory(apostas, resultados) {
   const COR_FUNDO = isVerde ? '#0a1e14' : '#1a0a0d'
   const COR_CARD = isVerde ? '#0d2a1a' : '#2a0d12'
 
-  // Fundo
   ctx.fillStyle = COR_FUNDO
   ctx.fillRect(0, 0, width, height)
 
-  // Grade sutil
-  ctx.strokeStyle = 'rgba(255,255,255,0.025)'
+  ctx.strokeStyle = 'rgba(255,255,255,0.02)'
   ctx.lineWidth = 1
   for (let i = 0; i < width; i += 80) {
     ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, height); ctx.stroke()
   }
-  for (let i = 0; i < height; i += 80) {
-    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(width, i); ctx.stroke()
-  }
 
-  // Circulo decorativo
   ctx.fillStyle = COR_TEMA
-  ctx.globalAlpha = 0.06
-  ctx.beginPath()
-  ctx.arc(900, 400, 600, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.globalAlpha = 1
-
-  // Barra topo
-  ctx.fillStyle = COR_TEMA
-  ctx.fillRect(0, 0, width, 10)
+  ctx.fillRect(0, 0, width, 8)
 
   // Header
   ctx.fillStyle = COR_TEMA
-  ctx.font = 'bold 58px ' + FONTE
+  ctx.font = 'bold 52px ' + FONTE
   ctx.textAlign = 'center'
   ctx.fillText('Gol Match BR', 540, 120)
-
   ctx.fillStyle = '#444455'
   ctx.font = '28px ' + FONTE
-  ctx.fillText('@golmatchbr', 540, 165)
+  ctx.fillText('@golmatchbr', 540, 162)
 
   ctx.fillStyle = COR_TEMA
   ctx.fillRect(70, 195, 940, 2)
@@ -463,9 +379,6 @@ async function gerarImagemStory(apostas, resultados) {
     ctx.fillText('Acompanhe nossos resultados', 540, 1020)
     ctx.textAlign = 'left'
   } else if (isVerde) {
-    // ── STORY VERDE ──
-
-    // Circulo OK grande centralizado
     ctx.fillStyle = '#00c48c'
     ctx.globalAlpha = 0.1
     ctx.beginPath()
@@ -495,7 +408,6 @@ async function gerarImagemStory(apostas, resultados) {
     ctx.font = 'bold 72px ' + FONTE
     ctx.fillText(placar, 540, 970)
 
-    // Card analise
     ctx.fillStyle = COR_CARD
     arredondarRetangulo(ctx, 60, 1020, 960, 160, 20)
     ctx.fill()
@@ -515,7 +427,6 @@ async function gerarImagemStory(apostas, resultados) {
     ctx.font = '26px ' + FONTE
     ctx.fillText('Baseada em dados estatisticos', 540, 1148)
 
-    // Performance
     ctx.fillStyle = COR_CARD
     arredondarRetangulo(ctx, 60, 1205, 960, 100, 16)
     ctx.fill()
@@ -531,7 +442,6 @@ async function gerarImagemStory(apostas, resultados) {
     ctx.font = 'bold 32px ' + FONTE
     ctx.fillText(acertos + '/' + total + ' corretas - Taxa: ' + taxa + '%', 540, 1285)
 
-    // CTA
     ctx.fillStyle = '#00c48c'
     arredondarRetangulo(ctx, 160, 1350, 760, 90, 45)
     ctx.fill()
@@ -547,8 +457,6 @@ async function gerarImagemStory(apostas, resultados) {
     ctx.fillText('Amanha tem mais. Nao fique de fora.', 540, 1555)
 
   } else {
-    // ── STORY VERMELHO ──
-
     ctx.fillStyle = '#e94560'
     ctx.globalAlpha = 0.1
     ctx.beginPath()
@@ -646,52 +554,19 @@ async function gerarImagemStory(apostas, resultados) {
   const caminhoLocal = path.join(assetsDir, 'card-story.png')
   fs.writeFileSync(caminhoLocal, canvas.toBuffer('image/png'))
   console.log('Story gerada: ' + caminhoLocal)
-
   return caminhoLocal
 }
 
-async function subirImagemGithubStory(caminhoLocal) {
-  const GITHUB_TOKEN = process.env.GITHUB_TOKEN
-  const GITHUB_REPO = process.env.GITHUB_REPO
-
-  if (!GITHUB_TOKEN || !GITHUB_REPO) return null
-
-  try {
-    const conteudo = fs.readFileSync(caminhoLocal)
-    const base64 = conteudo.toString('base64')
-    const nomeArquivo = 'card-story.png'
-
-    let sha = null
-    try {
-      const getRes = await axios.get(
-        'https://api.github.com/repos/' + GITHUB_REPO + '/contents/assets/' + nomeArquivo,
-        { headers: { Authorization: 'token ' + GITHUB_TOKEN } }
-      )
-      sha = getRes.data.sha
-    } catch (e) {}
-
-    const body = { message: 'Atualiza card story', content: base64 }
-    if (sha) body.sha = sha
-
-    await axios.put(
-      'https://api.github.com/repos/' + GITHUB_REPO + '/contents/assets/' + nomeArquivo,
-      body,
-      { headers: { Authorization: 'token ' + GITHUB_TOKEN } }
-    )
-
-    const urlPublica = 'https://raw.githubusercontent.com/' + GITHUB_REPO + '/main/assets/' + nomeArquivo + '?t=' + Date.now()
-    console.log('Story subida para GitHub: ' + urlPublica)
-    return urlPublica
-
-  } catch (err) {
-    console.error('Erro ao subir story:', err.response?.data || err.message)
-    return null
-  }
+async function gerarESubirImagem(apostas, turno, resultados) {
+  const caminhoLocal = await gerarImagem(apostas, turno, resultados)
+  // [skip ci] incluído automaticamente via utils.subirImagemGithub
+  const urlPublica = await subirImagemGithub(axios, caminhoLocal, 'card-resultado.png')
+  return urlPublica
 }
 
 async function gerarESubirStory(apostas, resultados) {
   const caminhoLocal = await gerarImagemStory(apostas, resultados)
-  const urlPublica = await subirImagemGithubStory(caminhoLocal)
+  const urlPublica = await subirImagemGithub(axios, caminhoLocal, 'card-story.png')
   return urlPublica
 }
 
