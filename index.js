@@ -825,15 +825,19 @@ async function runEducativo() {
   console.log('[' + new Date().toISOString() + '] Post educativo finalizado')
 }
 
-// ─── AGENDAMENTOS ───
-cron.schedule('0 8 * * *',        function() { runAgent('manha') },     { timezone: 'America/Sao_Paulo' })
-cron.schedule('0 12 * * *',       function() { runContexto() },         { timezone: 'America/Sao_Paulo' })
-cron.schedule('0 13 * * *',       function() { runAgent('tarde') },     { timezone: 'America/Sao_Paulo' })
-cron.schedule('0 19 * * *',       function() { runAgent('noite') },     { timezone: 'America/Sao_Paulo' })
-cron.schedule('0 9 * * *',        function() { runEducativo() },        { timezone: 'America/Sao_Paulo' })
-cron.schedule('0 15 * * *',       function() { runEducativo() },        { timezone: 'America/Sao_Paulo' })
-cron.schedule('*/5 14-23 * * *', function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
-cron.schedule('*/5 0-2 * * *',   function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
+// ─── AGENDAMENTOS (só ativa quando executado diretamente, não quando importado) ───
+if (require.main === module) {
+  cron.schedule('0 8 * * *',        function() { runAgent('manha') },     { timezone: 'America/Sao_Paulo' })
+  cron.schedule('0 12 * * *',       function() { runContexto() },         { timezone: 'America/Sao_Paulo' })
+  cron.schedule('0 13 * * *',       function() { runAgent('tarde') },     { timezone: 'America/Sao_Paulo' })
+  cron.schedule('0 19 * * *',       function() { runAgent('noite') },     { timezone: 'America/Sao_Paulo' })
+  cron.schedule('0 9 * * *',        function() { runEducativo() },        { timezone: 'America/Sao_Paulo' })
+  cron.schedule('0 15 * * *',       function() { runEducativo() },        { timezone: 'America/Sao_Paulo' })
+  cron.schedule('*/5 14-23 * * *', function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
+  cron.schedule('*/5 0-2 * * *',   function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
 
-console.log('Agente agendado: 8h, 12h, 13h, 15h e 19h (horario de Brasilia)')
-console.log('Monitor de resultados: a cada 5 minutos entre 14h e 02h')
+  console.log('Agente agendado: 8h, 12h, 13h, 15h e 19h (horario de Brasilia)')
+  console.log('Monitor de resultados: a cada 5 minutos entre 14h e 02h')
+}
+
+module.exports = { monitorarResultados }

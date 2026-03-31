@@ -21,16 +21,37 @@ const FONTE = 'DejaVu Sans'
 // ─── BUSCA IMAGEM NO UNSPLASH ───
 
 async function buscarImagemUnsplash(query) {
-  try {
-    const res = await axios.get('https://api.unsplash.com/photos/random', {
-      headers: { Authorization: 'Client-ID ' + UNSPLASH_ACCESS_KEY },
-      params: { query: query, orientation: 'squarish', content_filter: 'high' }
-    })
-    return res.data.urls.regular
-  } catch (err) {
-    console.error('Erro ao buscar imagem Unsplash:', err.message)
-    return null
+  const FALLBACKS = [
+    'brazilian soccer stadium',
+    'futebol brasileiro torcida',
+    'soccer match brazil crowd',
+    'estadio futebol brasil',
+    'brazilian football fans'
+  ]
+
+  async function tentarBusca(q) {
+    try {
+      const res = await axios.get('https://api.unsplash.com/photos/random', {
+        headers: { Authorization: 'Client-ID ' + UNSPLASH_ACCESS_KEY },
+        params: { query: q, orientation: 'squarish', content_filter: 'high' }
+      })
+      return res.data.urls.regular
+    } catch (err) {
+      console.error('Erro ao buscar imagem Unsplash (' + q + '):', err.message)
+      return null
+    }
   }
+
+  const queryFinal = query + ' soccer brazil'
+  const resultado = await tentarBusca(queryFinal)
+  if (resultado) return resultado
+
+  for (const fallback of FALLBACKS) {
+    const url = await tentarBusca(fallback)
+    if (url) return url
+  }
+
+  return null
 }
 
 // ─── GERA TEXTO COM CLAUDE ───
