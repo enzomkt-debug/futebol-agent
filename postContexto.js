@@ -1,10 +1,17 @@
 require('dotenv').config()
 const axios = require('axios')
+const path = require('path')
+const { createCanvas: _canvas, registerFont } = require('canvas')
 const { gerarESubirImagem } = require('./gerarImagem')
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 
-const FONTE = process.platform === 'win32' ? 'Arial' : 'Liberation Sans'
+// Registra fonte empacotada no repositorio
+try {
+  registerFont(path.join(__dirname, 'fonts', 'DejaVuSans.ttf'), { family: 'DejaVu Sans', weight: 'normal' })
+  registerFont(path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'), { family: 'DejaVu Sans', weight: 'bold' })
+} catch(e) {}
+const FONTE = 'DejaVu Sans'
 const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
 const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 

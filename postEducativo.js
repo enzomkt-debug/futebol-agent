@@ -1,6 +1,6 @@
 require('dotenv').config()
 const axios = require('axios')
-const { createCanvas, loadImage } = require('canvas')
+const { createCanvas, loadImage, registerFont } = require('canvas')
 const fs = require('fs')
 const path = require('path')
 const { gerarESubirStory } = require('./gerarImagem')
@@ -12,13 +12,14 @@ const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 const GITHUB_REPO = process.env.GITHUB_REPO
 
-// Configura fontconfig para encontrar fontes no Railway (Linux)
-if (process.platform !== 'win32') {
-  process.env.FONTCONFIG_PATH = '/usr/share/fontconfig'
-  process.env.FONTCONFIG_FILE = '/etc/fonts/fonts.conf'
+// Registra fonte empacotada no repositorio — funciona em qualquer ambiente
+try {
+  registerFont(path.join(__dirname, 'fonts', 'DejaVuSans.ttf'), { family: 'DejaVu Sans', weight: 'normal' })
+  registerFont(path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'), { family: 'DejaVu Sans', weight: 'bold' })
+} catch(e) {
+  console.log('Aviso: erro ao registrar fonte DejaVu:', e.message)
 }
-
-const FONTE = process.platform === 'win32' ? 'Arial' : 'DejaVu Sans'
+const FONTE = 'DejaVu Sans'
 
 // ─── BUSCA IMAGEM NO UNSPLASH ───
 
@@ -218,7 +219,8 @@ async function gerarCardEducativo(dado, confronto, imagemUrl) {
   ctx.fillStyle = '#ffffff'
   ctx.font = 'bold ' + fonteConfronto + 'px ' + FONTE
   const yConfrontoFinal = cardY + cardH - paddingV + fonteConfronto - 10
-  ctx.fillText(confronto, 540, yConfrontoFinal)
+console.log('BOX: topo=' + cardY + ' fundo=' + (cardY+cardH) + ' confronto_y=' + yConfrontoFinal)
+ctx.fillText(confronto, 540, yConfrontoFinal)
 
   // Salva
   const assetsDir = path.join(__dirname, 'assets')
@@ -528,3 +530,4 @@ async function postarConteudoEducativo(jogos) {
 }
 
 module.exports = { postarConteudoEducativo }
+postarConteudoEducativo([{ timeCasa: 'Palmeiras', timeFora: 'Grêmio', liga: 'Campeonato Brasileiro Série A', dataJogo: '2026-04-03' }])

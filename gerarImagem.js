@@ -3,46 +3,14 @@ const fs = require('fs')
 const path = require('path')
 const axios = require('axios')
 
-// ─── REGISTRO EXPLÍCITO DE FONTE NO RAILWAY (LINUX) ───
-if (process.platform !== 'win32') {
-  try {
-    const { execSync } = require('child_process')
-
-    // Descobre paths reais via fc-list
-    const output = execSync('fc-list | grep -i dejavu').toString()
-    console.log('Fontes DejaVu encontradas no sistema:\n' + output)
-
-    const linhas = output.split('\n').filter(l => l.includes('.ttf') || l.includes('.TTF'))
-
-    const regular = linhas.find(l => l.toLowerCase().includes('sans.ttf') && !l.toLowerCase().includes('bold') && !l.toLowerCase().includes('oblique') && !l.toLowerCase().includes('italic'))
-    const bold    = linhas.find(l => l.toLowerCase().includes('bold.ttf') && !l.toLowerCase().includes('oblique') && !l.toLowerCase().includes('italic'))
-
-    const extrairPath = (linha) => linha ? linha.split(':')[0].trim() : null
-
-    const pathRegular = extrairPath(regular)
-    const pathBold    = extrairPath(bold)
-
-    if (pathRegular && fs.existsSync(pathRegular)) {
-      registerFont(pathRegular, { family: 'DejaVu Sans', weight: 'normal' })
-      console.log('Fonte DejaVu Sans registrada:', pathRegular)
-    } else {
-      console.log('AVISO: DejaVu Sans regular nao encontrada')
-    }
-
-    if (pathBold && fs.existsSync(pathBold)) {
-      registerFont(pathBold, { family: 'DejaVu Sans', weight: 'bold' })
-      console.log('Fonte DejaVu Sans Bold registrada:', pathBold)
-    } else {
-      console.log('AVISO: DejaVu Sans Bold nao encontrada')
-    }
-
-  } catch (err) {
-    console.log('AVISO: Nao foi possivel registrar fontes:', err.message)
-  }
+// Registra fonte empacotada no repositorio — funciona em qualquer ambiente
+try {
+  registerFont(path.join(__dirname, 'fonts', 'DejaVuSans.ttf'), { family: 'DejaVu Sans', weight: 'normal' })
+  registerFont(path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'), { family: 'DejaVu Sans', weight: 'bold' })
+} catch(e) {
+  console.log('Aviso: erro ao registrar fonte DejaVu:', e.message)
 }
-
-// Fonte compativel com Linux (Railway) e Windows
-const FONTE = process.platform === 'win32' ? 'Arial' : 'Liberation Sans'
+const FONTE = 'DejaVu Sans'
 
 function arredondarRetangulo(ctx, x, y, w, h, r) {
   ctx.beginPath()
@@ -162,6 +130,7 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.fill()
     ctx.globalAlpha = 1
 
+    // Circulo verde em vez de simbolo
     ctx.fillStyle = '#00c48c'
     ctx.beginPath()
     ctx.arc(540, 300, 70, 0, Math.PI * 2)
@@ -253,6 +222,7 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.fill()
     ctx.globalAlpha = 1
 
+    // Circulo vermelho em vez de simbolo
     ctx.fillStyle = '#e94560'
     ctx.beginPath()
     ctx.arc(540, 290, 70, 0, Math.PI * 2)
@@ -406,6 +376,7 @@ async function gerarESubirImagem(apostas, turno, resultados) {
   return urlPublica
 }
 
+
 async function gerarImagemStory(apostas, resultados) {
   const width = 1080
   const height = 1920
@@ -438,9 +409,11 @@ async function gerarImagemStory(apostas, resultados) {
   const COR_FUNDO = isVerde ? '#0a1e14' : '#1a0a0d'
   const COR_CARD = isVerde ? '#0d2a1a' : '#2a0d12'
 
+  // Fundo
   ctx.fillStyle = COR_FUNDO
   ctx.fillRect(0, 0, width, height)
 
+  // Grade sutil
   ctx.strokeStyle = 'rgba(255,255,255,0.025)'
   ctx.lineWidth = 1
   for (let i = 0; i < width; i += 80) {
@@ -450,6 +423,7 @@ async function gerarImagemStory(apostas, resultados) {
     ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(width, i); ctx.stroke()
   }
 
+  // Circulo decorativo
   ctx.fillStyle = COR_TEMA
   ctx.globalAlpha = 0.06
   ctx.beginPath()
@@ -457,6 +431,7 @@ async function gerarImagemStory(apostas, resultados) {
   ctx.fill()
   ctx.globalAlpha = 1
 
+  // Barra topo
   ctx.fillStyle = COR_TEMA
   ctx.fillRect(0, 0, width, 10)
 
@@ -484,6 +459,7 @@ async function gerarImagemStory(apostas, resultados) {
   } else if (isVerde) {
     // ── STORY VERDE ──
 
+    // Circulo OK grande centralizado
     ctx.fillStyle = '#00c48c'
     ctx.globalAlpha = 0.1
     ctx.beginPath()
@@ -513,6 +489,7 @@ async function gerarImagemStory(apostas, resultados) {
     ctx.font = 'bold 72px ' + FONTE
     ctx.fillText(placar, 540, 970)
 
+    // Card analise
     ctx.fillStyle = COR_CARD
     arredondarRetangulo(ctx, 60, 1020, 960, 160, 20)
     ctx.fill()
@@ -532,6 +509,7 @@ async function gerarImagemStory(apostas, resultados) {
     ctx.font = '26px ' + FONTE
     ctx.fillText('Baseada em dados estatisticos', 540, 1148)
 
+    // Performance
     ctx.fillStyle = COR_CARD
     arredondarRetangulo(ctx, 60, 1205, 960, 100, 16)
     ctx.fill()
@@ -547,6 +525,7 @@ async function gerarImagemStory(apostas, resultados) {
     ctx.font = 'bold 32px ' + FONTE
     ctx.fillText(acertos + '/' + total + ' corretas - Taxa: ' + taxa + '%', 540, 1285)
 
+    // CTA
     ctx.fillStyle = '#00c48c'
     arredondarRetangulo(ctx, 160, 1350, 760, 90, 45)
     ctx.fill()
