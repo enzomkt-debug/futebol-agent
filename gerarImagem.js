@@ -1,8 +1,9 @@
-const { createCanvas, registerFont } = require('canvas')
+const { createCanvas, loadImage, registerFont } = require('canvas')
 const fs = require('fs')
 const path = require('path')
 const axios = require('axios')
 const { verificarAcerto, subirImagemGithub } = require('./utils')
+const LOGOS = require('./logosMapa')
 
 // Registra fonte empacotada no repositorio — funciona em qualquer ambiente
 try {
@@ -14,6 +15,33 @@ try {
   console.log('Aviso: erro ao registrar fonte DejaVu:', e.message)
 }
 const FONTE = 'DejaVu Sans'
+
+async function buscarLogoTime(nomeTime) {
+  if (!nomeTime) return null
+  try {
+    let url = LOGOS[nomeTime]
+    if (!url) {
+      const nome = nomeTime.toLowerCase()
+      const chave = Object.keys(LOGOS).find(function(k) {
+        const kl = k.toLowerCase()
+        return kl.includes(nome) || nome.includes(kl)
+      })
+      if (chave) url = LOGOS[chave]
+    }
+    if (!url) return null
+    return await loadImage(url)
+  } catch (e) {
+    return null
+  }
+}
+
+function desenharLogoCard(ctx, logo, xCenter, yCenter, size) {
+  if (!logo) return
+  const scale = Math.min(size / logo.width, size / logo.height)
+  const lw = logo.width * scale
+  const lh = logo.height * scale
+  ctx.drawImage(logo, xCenter - lw / 2, yCenter - lh / 2, lw, lh)
+}
 
 function arredondarRetangulo(ctx, x, y, w, h, r) {
   ctx.beginPath()
@@ -56,6 +84,19 @@ async function gerarImagem(apostas, turno, resultados) {
   const taxa = total > 0 ? Math.round((acertos / total) * 100) : 0
   const temResultado = total > 0 && destaqueResultado !== null
   const isVerde = temResultado && destaqueAcertou
+
+  // Carrega escudos dos times do destaque em paralelo
+  let logoCasa = null
+  let logoFora = null
+  if (temResultado && apostas && apostas.length) {
+    const partes = (apostas[0].jogo || '').split(' x ')
+    const nomes = await Promise.all([
+      buscarLogoTime(partes[0] ? partes[0].trim() : null),
+      buscarLogoTime(partes[1] ? partes[1].trim() : null)
+    ])
+    logoCasa = nomes[0]
+    logoFora = nomes[1]
+  }
 
   const COR_TEMA = isVerde ? '#00c48c' : '#e94560'
   const COR_FUNDO = isVerde ? '#0a1e14' : temResultado ? '#1a0a0d' : '#0d0d1a'
@@ -135,15 +176,19 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.font = 'bold 88px ' + FONTE
     ctx.fillText('ACERTOU', 540, 460)
 
-    const jogoNome = apostas[0].jogo.length > 32 ? apostas[0].jogo.substring(0, 32) + '...' : apostas[0].jogo
-    ctx.fillStyle = '#888899'
-    ctx.font = '26px ' + FONTE
-    ctx.fillText(jogoNome, 540, 530)
+    // Linha horizontal: escudo casa | placar | escudo fora
+    desenharLogoCard(ctx, logoCasa, 320, 520, 85)
+    desenharLogoCard(ctx, logoFora, 760, 520, 85)
 
     const placar = destaqueResultado.golsCasa + ' x ' + destaqueResultado.golsFora
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 32px ' + FONTE
-    ctx.fillText(placar, 540, 575)
+    ctx.font = 'bold 44px ' + FONTE
+    ctx.fillText(placar, 540, 534)
+
+    const jogoNome = apostas[0].jogo.length > 36 ? apostas[0].jogo.substring(0, 36) + '...' : apostas[0].jogo
+    ctx.fillStyle = '#888899'
+    ctx.font = '24px ' + FONTE
+    ctx.fillText(jogoNome, 540, 578)
     ctx.textAlign = 'left'
 
     ctx.fillStyle = COR_CARD
@@ -224,19 +269,23 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.font = 'bold 80px ' + FONTE
     ctx.fillText('NAO CONFIRMOU', 540, 440)
 
-    const jogoNome = apostas[0].jogo.length > 32 ? apostas[0].jogo.substring(0, 32) + '...' : apostas[0].jogo
-    ctx.fillStyle = '#888899'
-    ctx.font = '26px ' + FONTE
-    ctx.fillText(jogoNome, 540, 510)
+    // Linha horizontal: escudo casa | placar | escudo fora
+    desenharLogoCard(ctx, logoCasa, 320, 520, 85)
+    desenharLogoCard(ctx, logoFora, 760, 520, 85)
 
     const placar = destaqueResultado.golsCasa + ' x ' + destaqueResultado.golsFora
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 32px ' + FONTE
-    ctx.fillText(placar, 540, 555)
+    ctx.font = 'bold 44px ' + FONTE
+    ctx.fillText(placar, 540, 534)
+
+    const jogoNome = apostas[0].jogo.length > 36 ? apostas[0].jogo.substring(0, 36) + '...' : apostas[0].jogo
+    ctx.fillStyle = '#888899'
+    ctx.font = '24px ' + FONTE
+    ctx.fillText(jogoNome, 540, 578)
     ctx.textAlign = 'left'
 
     ctx.fillStyle = COR_CARD
-    arredondarRetangulo(ctx, 70, 585, 940, 150, 16)
+    arredondarRetangulo(ctx, 70, 605, 940, 150, 16)
     ctx.fill()
     ctx.strokeStyle = '#e94560'
     ctx.lineWidth = 1.5
