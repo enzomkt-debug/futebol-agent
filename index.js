@@ -808,7 +808,7 @@ async function runAgent(turno) {
 
     const todasApostas = []
     const jogosComBaixoEdge = []
-    const jogosFiltrados = jogos.slice(0, 15)
+    const jogosFiltrados = jogos.slice(0, 30)
 
     for (const jogo of jogosFiltrados) {
       const stats = await buscarStats(jogo.timeCasaId, jogo.timeForaId, jogo.matchId)
