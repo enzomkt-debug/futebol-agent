@@ -196,7 +196,7 @@ async function gerarTextoFormato3(jogos, h2hData) {
     'Voce e um especialista em estatistica de futebol. NUNCA mencione apostas, odds, palpites ou ganho financeiro.\n\n' +
     'Jogos:\n' + listaJogos(jogos) + formatarH2H(h2hData) + '\n\n' +
     'Escolha o confronto mais interessante. Retorne EXATAMENTE neste formato:\n' +
-    'PERGUNTA: [pergunta suspense sobre o confronto, comeca com "E SE..." ou "O QUE ACONTECE SE...", maximo 10 palavras]\n' +
+    'PERGUNTA: [pergunta suspense sobre o confronto, comeca com "E SE..." ou "O QUE ACONTECE SE...", maximo 10 palavras — a pergunta deve ser unica e diferente de variacoes obvias como "e se perder" ou "e se nao vencer" — seja mais criativo, ex: "E SE o goleiro for o heroi?", "E SE o primeiro gol definir tudo?"]\n' +
     'TIME_CASA: [nome curto time da casa, maximo 12 caracteres]\n' +
     'TIME_FORA: [nome curto time visitante, maximo 12 caracteres]\n' +
     'CONFRONTO: [Time Casa x Time Fora - DD/MM]\n' +
@@ -913,7 +913,7 @@ function gerarHashtags(texto) {
 
 // ─── FUNÇÃO PRINCIPAL ───
 
-async function postarConteudoEducativo(jogos, h2hData) {
+async function postarConteudoEducativo(jogos, h2hData, turno) {
   if (!jogos || !jogos.length) {
     console.log('Nenhum jogo disponivel para post educativo.')
     return
@@ -927,18 +927,27 @@ async function postarConteudoEducativo(jogos, h2hData) {
     return
   }
 
+  // Seleciona jogo destaque: tarde usa jogos[1] se existir, manha usa jogos[0]
+  const jogoDestaque = (turno === 'tarde' && jogos[1]) ? jogos[1] : jogos[0]
+  // h2hData já vem buscado para o jogo destaque pelo chamador (index.js)
+
   try {
     // 0=Dom→4, 1=Seg→1, 2=Ter→2, 3=Qua→3, 4=Qui→1, 5=Sex→2, 6=Sab→3
     const formatoMap = { 0: 4, 1: 1, 2: 2, 3: 3, 4: 1, 5: 2, 6: 3 }
     const dia = diaDaSemana()
     const formato = formatoMap[dia]
     const nomes = { 1: 'Voce Sabia?', 2: 'O Numero', 3: 'E Se...', 4: 'Raio-X' }
-    console.log('Gerando conteudo educativo — Formato ' + formato + ' (' + nomes[formato] + ')...')
+    console.log('Gerando conteudo educativo — Formato ' + formato + ' (' + nomes[formato] + ') — turno: ' + (turno || 'manha') + '...')
+
+    // Coloca o jogo destaque na frente para o Claude prioriza-lo
+    const jogosOrdenados = jogoDestaque === jogos[0]
+      ? jogos
+      : [jogoDestaque, ...jogos.filter(function(j) { return j !== jogoDestaque })]
 
     let feedPath, storyPath, texto
 
     if (formato === 1) {
-      const d = await gerarTextoFormato1(jogos, h2hData)
+      const d = await gerarTextoFormato1(jogosOrdenados, h2hData)
       if (!d.curiosidade) return
       const img = await buscarImagemUnsplash(d.query)
       feedPath = await gerarFeed_Formato1(d.curiosidade, d.confronto, img)
@@ -946,14 +955,14 @@ async function postarConteudoEducativo(jogos, h2hData) {
       texto = d.texto
 
     } else if (formato === 2) {
-      const d = await gerarTextoFormato2(jogos, h2hData)
+      const d = await gerarTextoFormato2(jogosOrdenados, h2hData)
       if (!d.numero) return
       feedPath = await gerarFeed_Formato2(d.numero, d.descricao, d.confronto)
       storyPath = await gerarStory_Formato2(d.numero, d.descricao, d.confronto)
       texto = d.texto
 
     } else if (formato === 3) {
-      const d = await gerarTextoFormato3(jogos, h2hData)
+      const d = await gerarTextoFormato3(jogosOrdenados, h2hData)
       if (!d.pergunta) return
       const img = await buscarImagemUnsplash(d.query)
       feedPath = await gerarFeed_Formato3(d.pergunta, d.timeCasa, d.timeFora, d.confronto, img)
@@ -961,7 +970,7 @@ async function postarConteudoEducativo(jogos, h2hData) {
       texto = d.texto
 
     } else {
-      const d = await gerarTextoFormato4(jogos, h2hData)
+      const d = await gerarTextoFormato4(jogosOrdenados, h2hData)
       if (!d.timeCasa) return
       feedPath = await gerarFeed_Formato4(d.timeCasa, d.timeFora, d.metricas)
       storyPath = await gerarStory_Formato4(d.timeCasa, d.timeFora, d.metricas)

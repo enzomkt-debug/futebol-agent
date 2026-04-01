@@ -902,16 +902,17 @@ async function runContexto() {
   console.log('[' + new Date().toISOString() + '] Post de contexto finalizado')
 }
 
-async function runEducativo() {
-  console.log('\n[' + new Date().toISOString() + '] Post educativo iniciado')
+async function runEducativo(turno) {
+  console.log('\n[' + new Date().toISOString() + '] Post educativo iniciado (' + turno + ')')
   try {
     const jogos = await buscarJogosProximosDias()
     if (!jogos.length) {
       console.log('Nenhum jogo para post educativo.')
       return
     }
-    const h2hData = jogos[0] ? await buscarH2H(jogos[0].matchId) : null
-    await postarConteudoEducativo(jogos, h2hData)
+    const jogoDestaque = (turno === 'tarde' && jogos[1]) ? jogos[1] : jogos[0]
+    const h2hData = jogoDestaque ? await buscarH2H(jogoDestaque.matchId) : null
+    await postarConteudoEducativo(jogos, h2hData, turno)
   } catch (err) {
     console.error('Erro no post educativo:', err.message)
   }
@@ -924,8 +925,8 @@ if (require.main === module) {
   cron.schedule('0 12 * * *',       function() { runContexto() },         { timezone: 'America/Sao_Paulo' })
   cron.schedule('0 13 * * *',       function() { runAgent('tarde') },     { timezone: 'America/Sao_Paulo' })
   cron.schedule('0 19 * * *',       function() { runAgent('noite') },     { timezone: 'America/Sao_Paulo' })
-  cron.schedule('0 9 * * *',        function() { runEducativo() },        { timezone: 'America/Sao_Paulo' })
-  cron.schedule('0 15 * * *',       function() { runEducativo() },        { timezone: 'America/Sao_Paulo' })
+  cron.schedule('0 9 * * *',        function() { runEducativo('manha') }, { timezone: 'America/Sao_Paulo' })
+  cron.schedule('0 15 * * *',       function() { runEducativo('tarde') }, { timezone: 'America/Sao_Paulo' })
   cron.schedule('*/5 14-23 * * *', function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
   cron.schedule('*/5 0-2 * * *',   function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
   cron.schedule('*/5 3-13 * * *',  function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
