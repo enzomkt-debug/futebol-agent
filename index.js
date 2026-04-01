@@ -575,103 +575,76 @@ function formatarHorarioBrasilia(horarioUtc) {
   return h + ':' + m
 }
 
-function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno, performance) {
-  const hoje = new Date().toLocaleDateString('pt-BR')
-  const dica = DICAS[Math.floor(Math.random() * DICAS.length)]
-  const hojeStr = new Date().toISOString().split('T')[0]
-  const turnoLabel = turno === 'manha' ? 'ANALISE DA MANHA' : turno === 'tarde' ? 'ANALISE DA TARDE' : 'ANALISE DA NOITE'
+function gerarMensagem(apostas, resultadoOntem, turno, performance) {
+  const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+  const amanhaStr = new Date(Date.now() + 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 
-  let secaoPerformance = ''
-  if (turno === 'manha' && performance) {
-    const emoji = performance.taxa >= 60 ? '🔥' : performance.taxa >= 50 ? '📊' : '📉'
-    secaoPerformance = emoji + ' PERFORMANCE (ultimos 30 dias)\n'
-    secaoPerformance += performance.acertos + '/' + performance.total + ' certas | Taxa: ' + performance.taxa + '% | ROI: ' + (performance.roiPct >= 0 ? '+' : '') + performance.roiPct + '%\n\n---\n'
+  // Sem apostas com edge suficiente
+  if (!apostas || !apostas.length) {
+    const dataLabel = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+    return [
+      '📅 ANALISE — ' + dataLabel,
+      '',
+      'Nenhum jogo com vantagem estatistica identificada para hoje e amanha.',
+      '',
+      'Monitoramos Brasileirao, Champions League, Premier League, Libertadores e mais 6 ligas — quando houver oportunidade real, voce sera o primeiro a saber.',
+      '',
+      'Analise com responsabilidade.'
+    ].join('\n')
   }
-
-  const jogosMapa = {}
-  apostas.forEach(function(a) {
-    if (!jogosMapa[a.jogo]) jogosMapa[a.jogo] = []
-    jogosMapa[a.jogo].push(a)
-  })
-
-  const jogosUnicos = Object.values(jogosMapa)
-  let listaApostas = ''
-  let contador = 1
-
-  jogosUnicos.forEach(function(mercados) {
-    const principal = mercados[0]
-    const dataLabel = principal.dataJogo === hojeStr ? 'HOJE' : formatarData(principal.dataJogo)
-    const probPct = Math.round(principal.prob * 100)
-    const oddImplicita = Math.round((1 / principal.odd) * 100)
-
-    listaApostas += contador + '. ' + principal.jogo + ' (' + principal.liga + ') — ' + dataLabel + '\n'
-    listaApostas += '   MELHOR VALOR: ' + principal.mercado + ' | Odd ' + principal.odd.toFixed(2) + '\n'
-    listaApostas += '   Nosso modelo: ' + probPct + '% | Casa acha: ' + oddImplicita + '% | Edge: +' + Math.round(principal.edge * 100) + '%\n'
-
-    if (mercados.length > 1) {
-      listaApostas += '   OUTRAS OPCOES:\n'
-      mercados.slice(1).forEach(function(m) {
-        listaApostas += '   — ' + m.mercado + ' | Odd ' + m.odd.toFixed(2) + ' | Edge: +' + Math.round(m.edge * 100) + '%\n'
-      })
-    }
-
-    listaApostas += '\n'
-    contador++
-  })
 
   const destaque = apostas[0]
-  const destaqueData = destaque.dataJogo === hojeStr ? 'HOJE' : formatarData(destaque.dataJogo)
-  const destaqueProbPct = Math.round(destaque.prob * 100)
-  const destaqueOddImplicita = Math.round((1 / destaque.odd) * 100)
+  const probPct = Math.round(destaque.prob * 100)
+  const horario = formatarHorarioBrasilia(destaque.horario)
 
-  let evitar = ''
-  if (jogoParaEvitar) {
-    evitar = 'JOGO PARA EVITAR\n\n' + jogoParaEvitar.jogo + '\nA odd nao reflete a probabilidade real — risco nao compensa.\n\n---\n'
-  }
-
-  const secaoResultado = turno === 'manha' ? 'RESULTADO DE ONTEM\n' + resultadoOntem + '\n\n---\n' : ''
-
-  const edgeMedio = apostas.reduce(function(sum, a) { return sum + a.edge }, 0) / apostas.length
-  const edgePct = Math.round(edgeMedio * 100)
-  let qualidadeDia
-  if (edgePct >= 10) {
-    qualidadeDia = '🟢 Dia com boa vantagem estatistica (' + edgePct + '% de edge medio)'
-  } else if (edgePct >= 7) {
-    qualidadeDia = '🟡 Vantagem moderada hoje (' + edgePct + '% de edge medio) — analise com atencao'
+  let tituloData
+  if (destaque.dataJogo === hojeStr) {
+    tituloData = '🎯 APOSTA DE HOJE — ' + new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  } else if (destaque.dataJogo === amanhaStr) {
+    tituloData = '🎯 APOSTA DE AMANHA — ' + new Date(Date.now() + 86400000).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
   } else {
-    qualidadeDia = '🔴 Vantagem abaixo da media hoje (' + edgePct + '% de edge medio) — avalie com cautela'
+    const d = new Date(destaque.dataJogo + 'T12:00:00')
+    tituloData = '🎯 APOSTA — ' + d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
   }
 
-  return [
-    turnoLabel + ' - ' + hoje,
-    '---', '',
-    qualidadeDia, '',
-    '---', '',
-    secaoResultado,
-    'APOSTA DESTAQUE', '',
-    destaque.jogo + ' (' + destaque.liga + ')',
-    'Mercado: ' + destaque.mercado,
-    'Odd: ' + destaque.odd.toFixed(2) + ' | Quando: ' + destaqueData,
-    '',
-    'Nosso modelo estima ' + destaqueProbPct + '% de chance.',
-    'A casa de apostas esta pagando como se fosse ' + destaqueOddImplicita + '%.',
-    'Essa diferenca de ' + Math.round(destaque.edge * 100) + '% e o valor real dessa aposta.',
-    '', '---',
-    'TODAS AS APOSTAS', '',
-    listaApostas,
-    '---', evitar,
-    secaoPerformance,
-    'DICA RAPIDA', '', dica, '',
-    '---',
-    'Analise com responsabilidade. Os dados sao uma ferramenta, nao uma garantia.'
-  ].join('\n')
+  const linhas = [tituloData, '']
+
+  if (turno === 'manha' && resultadoOntem) {
+    linhas.push('📋 RESULTADO DE ONTEM')
+    linhas.push(resultadoOntem)
+    linhas.push('')
+    linhas.push('---')
+    linhas.push('')
+  }
+
+  if (turno === 'manha' && performance) {
+    const emoji = performance.taxa >= 60 ? '🔥' : performance.taxa >= 50 ? '📊' : '📉'
+    linhas.push(emoji + ' PERFORMANCE (30 dias): ' + performance.acertos + '/' + performance.total + ' | Taxa: ' + performance.taxa + '% | ROI: ' + (performance.roiPct >= 0 ? '+' : '') + performance.roiPct + '%')
+    linhas.push('')
+    linhas.push('---')
+    linhas.push('')
+  }
+
+  linhas.push(destaque.jogo)
+  linhas.push('🏆 ' + destaque.liga + ' | ' + horario + 'h')
+  linhas.push('📊 Mercado: ' + destaque.mercado)
+  linhas.push('📈 Probabilidade: ' + probPct + '% | Odd: ' + destaque.odd.toFixed(2))
+  linhas.push('⚡ Edge: +' + Math.round(destaque.edge * 100) + '%')
+  linhas.push('')
+  linhas.push('Nosso modelo identificou vantagem estatistica real nesse jogo.')
+  linhas.push('')
+  linhas.push('---')
+  linhas.push('Analise com responsabilidade. Os dados sao uma ferramenta, nao uma garantia.')
+
+  return linhas.join('\n')
 }
 
 function gerarMensagemPanorama(todasApostas, jogosNeutros, jogosEvitar, jogosOriginais) {
   const SEP = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
   const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const MAX_JOGOS = 10
 
-  // Mapa de horário por matchId a partir dos jogos originais da API
+  // Mapa de horário/liga por matchId a partir dos jogos originais da API
   const horarioMap = {}
   const ligaMap = {}
   if (jogosOriginais) {
@@ -681,7 +654,7 @@ function gerarMensagemPanorama(todasApostas, jogosNeutros, jogosEvitar, jogosOri
     })
   }
 
-  // Agrupa apostas recomendadas por jogo (matchId)
+  // Agrupa todas as apostas por matchId
   const jogosMapa = {}
   todasApostas.forEach(function(a) {
     if (!jogosMapa[a.matchId]) jogosMapa[a.matchId] = []
@@ -689,10 +662,13 @@ function gerarMensagemPanorama(todasApostas, jogosNeutros, jogosEvitar, jogosOri
   })
   const gruposRecomendados = Object.values(jogosMapa)
 
-  // Seção recomendados
+  // Seção recomendados — o primeiro jogo (destaque) é substituído pelo aviso
   let secaoRec = '🟢 RECOMENDADOS\n\n'
-  if (gruposRecomendados.length) {
-    gruposRecomendados.forEach(function(bets) {
+  secaoRec += '⭐ Aposta destaque enviada acima\n\n'
+
+  const demaisGrupos = gruposRecomendados.slice(1).slice(0, MAX_JOGOS - 1)
+  if (demaisGrupos.length) {
+    demaisGrupos.forEach(function(bets) {
       const a = bets[0]
       const horario = formatarHorarioBrasilia(horarioMap[a.matchId] || a.horario)
       const liga = ligaMap[a.matchId] || a.liga || ''
@@ -705,17 +681,20 @@ function gerarMensagemPanorama(todasApostas, jogosNeutros, jogosEvitar, jogosOri
       secaoRec += '\n'
     })
   } else {
-    secaoRec += 'Nenhum jogo recomendado neste turno.\n\n'
+    secaoRec += 'Nenhum outro jogo recomendado neste turno.\n\n'
   }
 
-  // Seção neutros
+  // Seção neutros — limita para não estourar 4096 chars
+  const neutrosLimitados = jogosNeutros.slice(0, Math.max(1, MAX_JOGOS - gruposRecomendados.length))
   let secaoNeutros = '🟡 JOGOS NEUTROS\n\n'
-  if (jogosNeutros.length) {
-    jogosNeutros.forEach(function(j) {
-      const horario = formatarHorarioBrasilia(j.horario)
+  if (neutrosLimitados.length) {
+    neutrosLimitados.forEach(function(j) {
       secaoNeutros += '• ' + j.jogo + '\n'
-      secaoNeutros += '  ' + (j.liga || '') + ' · ' + horario + 'h\n'
+      secaoNeutros += '  ' + (j.liga || '') + ' · ' + formatarHorarioBrasilia(j.horario) + 'h\n'
     })
+    if (jogosNeutros.length > neutrosLimitados.length) {
+      secaoNeutros += '  ... e mais ' + (jogosNeutros.length - neutrosLimitados.length) + ' jogos\n'
+    }
   } else {
     secaoNeutros += 'Nenhum jogo neutro identificado.\n'
   }
@@ -724,9 +703,8 @@ function gerarMensagemPanorama(todasApostas, jogosNeutros, jogosEvitar, jogosOri
   let secaoEvitar = '🔴 EVITAR\n\n'
   if (jogosEvitar.length) {
     const e = jogosEvitar[0]
-    const horario = formatarHorarioBrasilia(e.horario)
     secaoEvitar += '✖ ' + e.jogo + '\n'
-    secaoEvitar += '  ' + (e.liga || '') + ' · ' + horario + 'h\n'
+    secaoEvitar += '  ' + (e.liga || '') + ' · ' + formatarHorarioBrasilia(e.horario) + 'h\n'
     secaoEvitar += '  Sem vantagem estatistica identificada — edge insuficiente em todos os mercados.\n'
   } else {
     secaoEvitar += 'Nenhum jogo identificado para evitar.\n'
@@ -863,6 +841,7 @@ async function runAgent(turno) {
 
     if (!todasApostas.length) {
       console.log('Nenhum value bet encontrado neste turno.')
+      await enviarTelegram(gerarMensagem([], resultadoOntem, turno, null))
       return
     }
 
@@ -872,7 +851,6 @@ async function runAgent(turno) {
     })
 
     const top5 = todasApostas.slice(0, 5)
-    const jogoParaEvitar = jogosComBaixoEdge[0] || null
 
     // 5. Salva apostas de HOJE no Supabase (após já ter processado as de ontem)
     await salvarApostasHojeSupabase(top5, turno)
@@ -880,18 +858,20 @@ async function runAgent(turno) {
     console.log(top5.length + ' value bets encontrados')
 
     const performance = await buscarPerformance()
-    const mensagem = gerarMensagem(top5, jogoParaEvitar, resultadoOntem, turno, performance)
+    const mensagem = gerarMensagem(top5, resultadoOntem, turno, performance)
     console.log('\n--- MENSAGEM ---\n' + mensagem + '\n---')
 
     await enviarTelegram(mensagem)
 
-    const panorama = gerarMensagemPanorama(
-      todasApostas,
-      jogosComBaixoEdge.slice(1),
-      jogosComBaixoEdge.slice(0, 1),
-      jogosFiltrados
-    )
-    await enviarTelegram(panorama)
+    if (turno === 'manha') {
+      const panorama = gerarMensagemPanorama(
+        todasApostas,
+        jogosComBaixoEdge.slice(1),
+        jogosComBaixoEdge.slice(0, 1),
+        jogosFiltrados
+      )
+      await enviarTelegram(panorama)
+    }
 
     // 6. Posta no Instagram com dados de ontem (turno manhã)
     if (turno === 'manha') {
