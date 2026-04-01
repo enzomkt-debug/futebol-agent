@@ -886,6 +886,7 @@ async function runAgent(turno) {
 
 const { postarContextoJogo } = require('./postContexto')
 const { postarConteudoEducativo } = require('./postEducativo')
+const { postarNoticia } = require('./postNoticia')
 
 async function runContexto() {
   console.log('\n[' + new Date().toISOString() + '] Post de contexto iniciado')
@@ -925,13 +926,14 @@ if (require.main === module) {
   cron.schedule('0 12 * * *',       function() { runContexto() },         { timezone: 'America/Sao_Paulo' })
   cron.schedule('0 13 * * *',       function() { runAgent('tarde') },     { timezone: 'America/Sao_Paulo' })
   cron.schedule('0 19 * * *',       function() { runAgent('noite') },     { timezone: 'America/Sao_Paulo' })
+  cron.schedule('0 10 * * *',       function() { postarNoticia() },       { timezone: 'America/Sao_Paulo' })
   cron.schedule('0 9 * * *',        function() { runEducativo('manha') }, { timezone: 'America/Sao_Paulo' })
   cron.schedule('0 15 * * *',       function() { runEducativo('tarde') }, { timezone: 'America/Sao_Paulo' })
   cron.schedule('*/5 14-23 * * *', function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
   cron.schedule('*/5 0-2 * * *',   function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
   cron.schedule('*/5 3-13 * * *',  function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
 
-  console.log('Agente agendado: 8h, 12h, 13h, 15h e 19h (horario de Brasilia)')
+  console.log('Agente agendado: 8h, 9h, 10h, 12h, 13h, 15h e 19h (horario de Brasilia)')
   console.log('Monitor de resultados: a cada 5 minutos entre 14h e 02h')
 }
 
