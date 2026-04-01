@@ -567,6 +567,14 @@ function formatarData(dataStr) {
   return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
 }
 
+function formatarHorarioBrasilia(horarioUtc) {
+  if (!horarioUtc) return '--:--'
+  const d = new Date(horarioUtc)
+  const h = String((d.getUTCHours() - 3 + 24) % 24).padStart(2, '0')
+  const m = String(d.getUTCMinutes()).padStart(2, '0')
+  return h + ':' + m
+}
+
 function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno, performance) {
   const hoje = new Date().toLocaleDateString('pt-BR')
   const dica = DICAS[Math.floor(Math.random() * DICAS.length)]
@@ -656,6 +664,100 @@ function gerarMensagem(apostas, jogoParaEvitar, resultadoOntem, turno, performan
     'DICA RAPIDA', '', dica, '',
     '---',
     'Analise com responsabilidade. Os dados sao uma ferramenta, nao uma garantia.'
+  ].join('\n')
+}
+
+function gerarMensagemPanorama(todasApostas, jogosNeutros, jogosEvitar, jogosOriginais) {
+  const SEP = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+  const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+  // Mapa de horário por matchId a partir dos jogos originais da API
+  const horarioMap = {}
+  const ligaMap = {}
+  if (jogosOriginais) {
+    jogosOriginais.forEach(function(j) {
+      horarioMap[j.matchId] = j.horario
+      ligaMap[j.matchId] = j.liga
+    })
+  }
+
+  // Agrupa apostas recomendadas por jogo (matchId)
+  const jogosMapa = {}
+  todasApostas.forEach(function(a) {
+    if (!jogosMapa[a.matchId]) jogosMapa[a.matchId] = []
+    jogosMapa[a.matchId].push(a)
+  })
+  const gruposRecomendados = Object.values(jogosMapa)
+
+  // Seção recomendados
+  let secaoRec = '🟢 RECOMENDADOS\n\n'
+  if (gruposRecomendados.length) {
+    gruposRecomendados.forEach(function(bets) {
+      const a = bets[0]
+      const horario = formatarHorarioBrasilia(horarioMap[a.matchId] || a.horario)
+      const liga = ligaMap[a.matchId] || a.liga || ''
+      secaoRec += '⚽ ' + a.jogo + '\n'
+      secaoRec += '   ' + liga + ' · ' + horario + 'h\n'
+      bets.forEach(function(b) {
+        const probPct = Math.round(b.prob * 100)
+        secaoRec += '   ✔ ' + b.mercado + ' | Odd ' + b.odd.toFixed(2) + ' | Prob ' + probPct + '% | Edge +' + Math.round(b.edge * 100) + '%\n'
+      })
+      secaoRec += '\n'
+    })
+  } else {
+    secaoRec += 'Nenhum jogo recomendado neste turno.\n\n'
+  }
+
+  // Seção neutros
+  let secaoNeutros = '🟡 JOGOS NEUTROS\n\n'
+  if (jogosNeutros.length) {
+    jogosNeutros.forEach(function(j) {
+      const horario = formatarHorarioBrasilia(j.horario)
+      secaoNeutros += '• ' + j.jogo + '\n'
+      secaoNeutros += '  ' + (j.liga || '') + ' · ' + horario + 'h\n'
+    })
+  } else {
+    secaoNeutros += 'Nenhum jogo neutro identificado.\n'
+  }
+
+  // Seção evitar
+  let secaoEvitar = '🔴 EVITAR\n\n'
+  if (jogosEvitar.length) {
+    const e = jogosEvitar[0]
+    const horario = formatarHorarioBrasilia(e.horario)
+    secaoEvitar += '✖ ' + e.jogo + '\n'
+    secaoEvitar += '  ' + (e.liga || '') + ' · ' + horario + 'h\n'
+    secaoEvitar += '  Sem vantagem estatistica identificada — edge insuficiente em todos os mercados.\n'
+  } else {
+    secaoEvitar += 'Nenhum jogo identificado para evitar.\n'
+  }
+
+  // Resumo
+  const totalAnalisado = gruposRecomendados.length + jogosNeutros.length + jogosEvitar.length
+  const edgeMedio = todasApostas.length
+    ? Math.round((todasApostas.reduce(function(s, a) { return s + a.edge }, 0) / todasApostas.length) * 100)
+    : 0
+
+  const secaoResumo = [
+    '📊 RESUMO DO DIA',
+    '',
+    'Total analisado: ' + totalAnalisado + ' jogos',
+    'Recomendados: ' + gruposRecomendados.length + ' | Neutros: ' + jogosNeutros.length + ' | Evitar: ' + jogosEvitar.length,
+    'Edge medio dos recomendados: ' + edgeMedio + '%',
+    '',
+    'Analise com responsabilidade. Os dados sao uma ferramenta, nao uma garantia.'
+  ].join('\n')
+
+  return [
+    '📅 PANORAMA COMPLETO — ' + hoje,
+    SEP, '',
+    secaoRec,
+    SEP, '',
+    secaoNeutros, '',
+    SEP, '',
+    secaoEvitar, '',
+    SEP, '',
+    secaoResumo
   ].join('\n')
 }
 
@@ -751,7 +853,11 @@ async function runAgent(turno) {
           })
         }
       } else {
-        jogosComBaixoEdge.push({ jogo: jogo.timeCasa + ' x ' + jogo.timeFora })
+        jogosComBaixoEdge.push({
+          jogo: jogo.timeCasa + ' x ' + jogo.timeFora,
+          liga: jogo.liga,
+          horario: jogo.horario
+        })
       }
     }
 
@@ -778,6 +884,14 @@ async function runAgent(turno) {
     console.log('\n--- MENSAGEM ---\n' + mensagem + '\n---')
 
     await enviarTelegram(mensagem)
+
+    const panorama = gerarMensagemPanorama(
+      todasApostas,
+      jogosComBaixoEdge.slice(1),
+      jogosComBaixoEdge.slice(0, 1),
+      jogosFiltrados
+    )
+    await enviarTelegram(panorama)
 
     // 6. Posta no Instagram com dados de ontem (turno manhã)
     if (turno === 'manha') {
