@@ -818,7 +818,8 @@ async function runEducativo() {
       console.log('Nenhum jogo para post educativo.')
       return
     }
-    await postarConteudoEducativo(jogos)
+    const h2hData = jogos[0] ? await buscarH2H(jogos[0].matchId) : null
+    await postarConteudoEducativo(jogos, h2hData)
   } catch (err) {
     console.error('Erro no post educativo:', err.message)
   }
