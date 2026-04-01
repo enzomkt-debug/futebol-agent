@@ -4,6 +4,7 @@ const { createCanvas, loadImage, registerFont } = require('canvas')
 const fs = require('fs')
 const path = require('path')
 const { subirImagemGithub } = require('./utils')
+const LOGOS = require('./logosMapa')
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
@@ -101,6 +102,29 @@ async function buscarImagemUnsplash(query) {
     if (url) return url
   }
   return null
+}
+
+// ─── LOGOS ───
+
+async function buscarLogoTime(nomeTime) {
+  if (!nomeTime) return null
+  try {
+    // Busca exata
+    let url = LOGOS[nomeTime]
+    // Match parcial: "SC Internacional" bate em "Internacional"
+    if (!url) {
+      const nome = nomeTime.toLowerCase()
+      const chave = Object.keys(LOGOS).find(function(k) {
+        const kl = k.toLowerCase()
+        return kl.includes(nome) || nome.includes(kl)
+      })
+      if (chave) url = LOGOS[chave]
+    }
+    if (!url) return null
+    return await loadImage(url)
+  } catch (e) {
+    return null
+  }
 }
 
 // ─── CLAUDE ───
@@ -518,6 +542,12 @@ async function gerarFeed_Formato3(pergunta, timeCasa, timeFora, confronto, image
   ctx.fillStyle = 'rgba(0,0,0,0.68)'
   ctx.fillRect(0, 0, W, H)
 
+  // Carrega escudos em paralelo (nunca quebra se falhar)
+  const [logoCasa, logoFora] = await Promise.all([
+    buscarLogoTime(timeCasa),
+    buscarLogoTime(timeFora)
+  ])
+
   ctx.textAlign = 'center'
 
   // Pergunta no topo
@@ -536,6 +566,17 @@ async function gerarFeed_Formato3(pergunta, timeCasa, timeFora, confronto, image
   linhas.forEach(function(l) { ctx.fillText(l, W / 2, yP); yP += fs + 14 })
   ctx.shadowBlur = 0
 
+  // Escudos: acima da linha divisória, nas laterais (160x160, centro y=440)
+  function desenharLogo(logo, xCenter, yCenter, size) {
+    if (!logo) return
+    const scale = Math.min(size / logo.width, size / logo.height)
+    const lw = logo.width * scale
+    const lh = logo.height * scale
+    ctx.drawImage(logo, xCenter - lw / 2, yCenter - lh / 2, lw, lh)
+  }
+  desenharLogo(logoCasa, 240, 440, 160)
+  desenharLogo(logoFora, 840, 440, 160)
+
   // Linha central
   ctx.fillStyle = 'rgba(255,255,255,0.15)'
   ctx.fillRect(60, 538, 960, 2)
@@ -548,20 +589,20 @@ async function gerarFeed_Formato3(pergunta, timeCasa, timeFora, confronto, image
   ctx.font = 'bold 130px ' + FONTE
   ctx.shadowColor = VERDE
   ctx.shadowBlur = 28
-  ctx.fillText('VS', W / 2, 568)
+  ctx.fillText('VS', W / 2, 580)
   ctx.shadowBlur = 0
 
-  // Time casa — esquerda
+  // Time casa — esquerda (abaixo do VS)
   ctx.textAlign = 'left'
   ctx.fillStyle = VERDE
-  ctx.font = 'bold 56px ' + FONTE
-  ctx.fillText(timeCasa, 80, 568)
+  ctx.font = 'bold 52px ' + FONTE
+  ctx.fillText(timeCasa, 80, 670)
 
-  // Time fora — direita
+  // Time fora — direita (abaixo do VS)
   ctx.textAlign = 'right'
   ctx.fillStyle = BRANCO
-  ctx.font = 'bold 56px ' + FONTE
-  ctx.fillText(timeFora, W - 80, 568)
+  ctx.font = 'bold 52px ' + FONTE
+  ctx.fillText(timeFora, W - 80, 670)
 
   // Confronto rodapé
   ctx.textAlign = 'center'
@@ -591,6 +632,12 @@ async function gerarStory_Formato3(pergunta, timeCasa, timeFora, confronto, imag
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, W, H)
 
+  // Carrega escudos em paralelo (nunca quebra se falhar)
+  const [logoCasa, logoFora] = await Promise.all([
+    buscarLogoTime(timeCasa),
+    buscarLogoTime(timeFora)
+  ])
+
   ctx.textAlign = 'center'
 
   // Pergunta
@@ -609,33 +656,46 @@ async function gerarStory_Formato3(pergunta, timeCasa, timeFora, confronto, imag
   ctx.fillStyle = 'rgba(255,255,255,0.14)'
   ctx.fillRect(80, 790, 920, 2)
 
+  // Escudo time casa — centralizado (200x200, centro y=910)
+  function desenharLogo(logo, xCenter, yCenter, size) {
+    if (!logo) return
+    const scale = Math.min(size / logo.width, size / logo.height)
+    const lw = logo.width * scale
+    const lh = logo.height * scale
+    ctx.drawImage(logo, xCenter - lw / 2, yCenter - lh / 2, lw, lh)
+  }
+  desenharLogo(logoCasa, W / 2, 910, 200)
+
   // Casa em cima
   ctx.fillStyle = VERDE
-  ctx.font = 'bold 90px ' + FONTE
-  ctx.fillText(timeCasa, W / 2, 920)
+  ctx.font = 'bold 80px ' + FONTE
+  ctx.fillText(timeCasa, W / 2, 1050)
 
   // VS
-  const vsGrad = ctx.createLinearGradient(400, 980, 680, 1120)
+  const vsGrad = ctx.createLinearGradient(400, 1090, 680, 1230)
   vsGrad.addColorStop(0, VERDE)
   vsGrad.addColorStop(1, AMARELO)
   ctx.fillStyle = vsGrad
   ctx.font = 'bold 164px ' + FONTE
   ctx.shadowColor = VERDE
   ctx.shadowBlur = 36
-  ctx.fillText('VS', W / 2, 1100)
+  ctx.fillText('VS', W / 2, 1220)
   ctx.shadowBlur = 0
+
+  // Escudo time fora — centralizado (200x200, centro y=1360)
+  desenharLogo(logoFora, W / 2, 1360, 200)
 
   // Fora embaixo
   ctx.fillStyle = BRANCO
-  ctx.font = 'bold 90px ' + FONTE
-  ctx.fillText(timeFora, W / 2, 1250)
+  ctx.font = 'bold 80px ' + FONTE
+  ctx.fillText(timeFora, W / 2, 1500)
 
   ctx.fillStyle = 'rgba(255,255,255,0.14)'
-  ctx.fillRect(80, 1300, 920, 2)
+  ctx.fillRect(80, 1550, 920, 2)
 
   ctx.fillStyle = 'rgba(255,255,255,0.5)'
   ctx.font = 'bold 40px ' + FONTE
-  ctx.fillText(confronto, W / 2, 1370)
+  ctx.fillText(confronto, W / 2, 1620)
 
   ctx.fillStyle = VERDE
   ctx.font = 'bold 36px ' + FONTE
