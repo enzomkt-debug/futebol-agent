@@ -391,8 +391,7 @@ async function buscarJogosProximosDias() {
 
     const jogos = []
     for (const m of matches) {
-      const liga = LIGAS_PRIORIDADE[m.competition.id]
-      if (!liga) continue
+      const ligaConhecida = LIGAS_PRIORIDADE[m.competition.id]
       jogos.push({
         matchId: m.id,
         timeCasaId: m.homeTeam.id,
@@ -401,7 +400,7 @@ async function buscarJogosProximosDias() {
         timeFora: m.awayTeam.name,
         liga: m.competition.name,
         ligaId: m.competition.id,
-        prioridade: liga.prioridade,
+        prioridade: ligaConhecida ? ligaConhecida.prioridade : 99,
         dataJogo: m.utcDate.split('T')[0],
         horario: m.utcDate
       })
@@ -412,7 +411,7 @@ async function buscarJogosProximosDias() {
       return a.dataJogo.localeCompare(b.dataJogo)
     })
 
-    console.log(jogos.length + ' jogos nas ligas prioritarias')
+    console.log(jogos.length + ' jogos encontrados (' + jogos.filter(function(j) { return j.prioridade !== 99 }).length + ' ligas conhecidas, ' + jogos.filter(function(j) { return j.prioridade === 99 }).length + ' desconhecidas)')
     return jogos
 
   } catch (err) {
@@ -428,8 +427,7 @@ async function buscarJogosHoje() {
     const matches = data.matches || []
     const jogos = []
     for (const m of matches) {
-      const liga = LIGAS_PRIORIDADE[m.competition.id]
-      if (!liga) continue
+      const ligaConhecida = LIGAS_PRIORIDADE[m.competition.id]
       jogos.push({
         matchId: m.id,
         timeCasaId: m.homeTeam.id,
@@ -438,7 +436,7 @@ async function buscarJogosHoje() {
         timeFora: m.awayTeam.name,
         liga: m.competition.name,
         ligaId: m.competition.id,
-        prioridade: liga.prioridade,
+        prioridade: ligaConhecida ? ligaConhecida.prioridade : 99,
         dataJogo: hoje,
         horario: m.utcDate
       })
