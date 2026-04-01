@@ -2,8 +2,9 @@ require('dotenv').config()
 const axios = require('axios')
 const path = require('path')
 const fs = require('fs')
-const { createCanvas, registerFont } = require('canvas')
+const { createCanvas, loadImage, registerFont } = require('canvas')
 const { subirImagemGithub } = require('./utils')
+const LOGOS = require('./logosMapa')
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
@@ -14,6 +15,25 @@ try {
   registerFont(path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'), { family: 'DejaVu Sans', weight: 'bold' })
 } catch(e) {}
 const FONTE = 'DejaVu Sans'
+
+async function buscarLogoTime(nomeTime) {
+  if (!nomeTime) return null
+  try {
+    let url = LOGOS[nomeTime]
+    if (!url) {
+      const nome = nomeTime.toLowerCase()
+      const chave = Object.keys(LOGOS).find(function(k) {
+        const kl = k.toLowerCase()
+        return kl.includes(nome) || nome.includes(kl)
+      })
+      if (chave) url = LOGOS[chave]
+    }
+    if (!url) return null
+    return await loadImage(url)
+  } catch (e) {
+    return null
+  }
+}
 
 async function gerarTextoComClaude(jogo) {
   try {
@@ -125,17 +145,47 @@ async function gerarImagemContexto(jogo) {
   const casaNome = jogo.timeCasa.length > maxLen ? jogo.timeCasa.substring(0, maxLen) : jogo.timeCasa
   const foraNome = jogo.timeFora.length > maxLen ? jogo.timeFora.substring(0, maxLen) : jogo.timeFora
 
+  // Carrega logos em paralelo
+  const [logoCasa, logoFora] = await Promise.all([
+    buscarLogoTime(jogo.timeCasa),
+    buscarLogoTime(jogo.timeFora)
+  ])
+
+  // Nome time casa
   ctx.fillStyle = '#ffffff'
   ctx.font = 'bold 72px ' + FONTE
   ctx.fillText(casaNome, 540, 310)
+
+  // Escudo casa: à esquerda do texto, centralizado em y=275 (centro visual da linha 310)
+  if (logoCasa) {
+    ctx.font = 'bold 72px ' + FONTE
+    const casaW = ctx.measureText(casaNome).width
+    const cx = (540 - casaW / 2) - 10 - 40  // borda esq. do texto − 10px gap − metade do logo (40)
+    const scale = Math.min(80 / logoCasa.width, 80 / logoCasa.height)
+    const lw = logoCasa.width * scale
+    const lh = logoCasa.height * scale
+    ctx.drawImage(logoCasa, cx - lw / 2, 275 - lh / 2, lw, lh)
+  }
 
   ctx.fillStyle = '#e94560'
   ctx.font = 'bold 52px ' + FONTE
   ctx.fillText('VS', 540, 390)
 
+  // Nome time fora
   ctx.fillStyle = '#ffffff'
   ctx.font = 'bold 72px ' + FONTE
   ctx.fillText(foraNome, 540, 470)
+
+  // Escudo fora: à direita do texto, centralizado em y=435 (centro visual da linha 470)
+  if (logoFora) {
+    ctx.font = 'bold 72px ' + FONTE
+    const foraW = ctx.measureText(foraNome).width
+    const cx = (540 + foraW / 2) + 10 + 40  // borda dir. do texto + 10px gap + metade do logo (40)
+    const scale = Math.min(80 / logoFora.width, 80 / logoFora.height)
+    const lw = logoFora.width * scale
+    const lh = logoFora.height * scale
+    ctx.drawImage(logoFora, cx - lw / 2, 435 - lh / 2, lw, lh)
+  }
 
   const dataFormatada = new Date(jogo.dataJogo + 'T12:00:00').toLocaleDateString('pt-BR', {
     weekday: 'long', day: '2-digit', month: 'long'
