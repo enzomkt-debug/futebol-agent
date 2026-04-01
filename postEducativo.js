@@ -729,16 +729,31 @@ async function gerarFeed_Formato4(timeCasa, timeFora, metricas) {
   ctx.fillStyle = 'rgba(0,196,140,0.4)'
   ctx.fillRect(80, 108, 920, 2)
 
-  // Times — cabeçalho colunas
+  // Carrega logos em paralelo
+  const [logoCasa4f, logoFora4f] = await Promise.all([
+    buscarLogoTime(timeCasa),
+    buscarLogoTime(timeFora)
+  ])
+
+  // Times — cabeçalho colunas (logos 60x60, centro y=158)
+  function logoFeed4(logo, cx, cy) {
+    if (!logo) return
+    const sc = Math.min(60 / logo.width, 60 / logo.height)
+    const lw = logo.width * sc, lh = logo.height * sc
+    ctx.drawImage(logo, cx - lw / 2, cy - lh / 2, lw, lh)
+  }
+  logoFeed4(logoCasa4f, 90, 158)
+  logoFeed4(logoFora4f, W - 90, 158)
+
   ctx.textAlign = 'left'
   ctx.fillStyle = VERDE
   ctx.font = 'bold 44px ' + FONTE
-  ctx.fillText(timeCasa, 90, 174)
+  ctx.fillText(timeCasa, logoCasa4f ? 130 : 90, 174)
 
   ctx.textAlign = 'right'
   ctx.fillStyle = 'rgba(255,255,255,0.7)'
   ctx.font = 'bold 44px ' + FONTE
-  ctx.fillText(timeFora, W - 90, 174)
+  ctx.fillText(timeFora, logoFora4f ? W - 130 : W - 90, 174)
 
   ctx.textAlign = 'center'
   ctx.fillStyle = 'rgba(255,255,255,0.28)'
@@ -832,14 +847,31 @@ async function gerarStory_Formato4(timeCasa, timeFora, metricas) {
   ctx.fillStyle = 'rgba(0,196,140,0.4)'
   ctx.fillRect(80, 172, 920, 2)
 
+  // Carrega logos em paralelo
+  const [logoCasa4s, logoFora4s] = await Promise.all([
+    buscarLogoTime(timeCasa),
+    buscarLogoTime(timeFora)
+  ])
+
+  // Times — cabeçalho colunas (logos 80x80, centro y=233)
+  function logoStory4(logo, cx, cy) {
+    if (!logo) return
+    const sc = Math.min(80 / logo.width, 80 / logo.height)
+    const lw = logo.width * sc, lh = logo.height * sc
+    ctx.drawImage(logo, cx - lw / 2, cy - lh / 2, lw, lh)
+  }
+  logoStory4(logoCasa4s, 90, 233)
+  logoStory4(logoFora4s, W - 90, 233)
+
   ctx.textAlign = 'left'
   ctx.fillStyle = VERDE
   ctx.font = 'bold 54px ' + FONTE
-  ctx.fillText(timeCasa, 90, 252)
+  ctx.fillText(timeCasa, logoCasa4s ? 140 : 90, 252)
 
   ctx.textAlign = 'right'
   ctx.fillStyle = 'rgba(255,255,255,0.7)'
-  ctx.fillText(timeFora, W - 90, 252)
+  ctx.font = 'bold 54px ' + FONTE
+  ctx.fillText(timeFora, logoFora4s ? W - 140 : W - 90, 252)
 
   ctx.textAlign = 'center'
   ctx.fillStyle = 'rgba(255,255,255,0.25)'
