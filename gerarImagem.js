@@ -57,7 +57,7 @@ async function gerarImagem(apostas, turno, resultados) {
   const temResultado = total > 0 && destaqueResultado !== null
   const isVerde = temResultado && destaqueAcertou
 
-  const COR_TEMA = isVerde ? '#00c48c' : temResultado ? '#e94560' : '#e94560'
+  const COR_TEMA = isVerde ? '#00c48c' : '#e94560'
   const COR_FUNDO = isVerde ? '#0a1e14' : temResultado ? '#1a0a0d' : '#0d0d1a'
   const COR_CARD = isVerde ? '#0d2a1a' : temResultado ? '#2a0d12' : '#1a1a2e'
 

@@ -38,7 +38,7 @@ O post deve:
 Retorne APENAS o texto do post, sem aspas, sem explicacoes.`
 
     const res = await axios.post('https://api.anthropic.com/v1/messages', {
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 300,
       messages: [{ role: 'user', content: prompt }]
     }, {
@@ -60,19 +60,17 @@ Retorne APENAS o texto do post, sem aspas, sem explicacoes.`
 }
 
 function gerarHashtags(liga) {
-  const hashtagsPorLiga = {
-    'Campeonato Brasileiro Serie A': '#brasileirao #futebolbrasileiro #serieA',
-    'UEFA Champions League': '#championsleague #ucl #futeboleuropeu',
-    'Premier League': '#premierleague #futebolengles',
-    'Copa Libertadores': '#libertadores #conmebol',
-    'La Liga': '#laliga #futebolespanhol',
-    'Bundesliga': '#bundesliga #futebolalemo',
-    'Serie A': '#serieA #futebolitaliano',
-    'Ligue 1': '#ligue1 #futebolfrances'
-  }
-
-  const base = hashtagsPorLiga[liga] || '#futebol #analiseesportiva'
-  return base + ' #inteligenciaartificial #dadosesportivos #golmatchbr #futebol #estatisticas #futebolanalitico'
+  const l = liga.toLowerCase()
+  let especificas = '#futebol #analiseesportiva'
+  if (l.includes('brasileir') || l.includes('serie a') && l.includes('brasil')) especificas = '#brasileirao #futebolbrasileiro #serieA'
+  else if (l.includes('champions')) especificas = '#championsleague #ucl #futeboleuropeu'
+  else if (l.includes('premier')) especificas = '#premierleague #futebolengles'
+  else if (l.includes('libertadores')) especificas = '#libertadores #conmebol'
+  else if (l.includes('la liga') || l.includes('laliga')) especificas = '#laliga #futebolespanhol'
+  else if (l.includes('bundesliga')) especificas = '#bundesliga #futebolalemo'
+  else if (l.includes('serie a') || l.includes('seria a')) especificas = '#serieA #futebolitaliano'
+  else if (l.includes('ligue')) especificas = '#ligue1 #futebolfrances'
+  return especificas + ' #inteligenciaartificial #dadosesportivos #golmatchbr #futebol #estatisticas #futebolanalitico'
 }
 
 async function gerarImagemContexto(jogo) {

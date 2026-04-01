@@ -113,7 +113,7 @@ function formatarH2H(h2hData) {
 
 async function chamarClaude(prompt) {
   const res = await axios.post('https://api.anthropic.com/v1/messages', {
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 500,
     messages: [{ role: 'user', content: prompt }]
   }, {
@@ -982,4 +982,14 @@ async function postarConteudoEducativo(jogos, h2hData) {
   }
 }
 
-module.exports = { postarConteudoEducativo }
+module.exports = {
+  postarConteudoEducativo,
+  _test: {
+    gerarTextoFormato1, gerarTextoFormato2, gerarTextoFormato3, gerarTextoFormato4,
+    gerarFeed_Formato1, gerarStory_Formato1,
+    gerarFeed_Formato2, gerarStory_Formato2,
+    gerarFeed_Formato3, gerarStory_Formato3,
+    gerarFeed_Formato4, gerarStory_Formato4,
+    buscarImagemUnsplash
+  }
+}
