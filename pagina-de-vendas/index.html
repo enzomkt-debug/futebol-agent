@@ -1058,7 +1058,7 @@
         elTaxa.textContent  = comRes.length ? Math.round(acertos/comRes.length*100) + '%' : '—'
         elTotal.textContent = comRes.length || '—'
         const semRes  = unicas.filter(a => !a.resultados || !a.resultados.length)
-        const ordenados = comRes.slice(0, 3).concat(semRes).concat(comRes.slice(3))
+        const ordenados = comRes.concat(semRes)
         ordenados.forEach(a => {
           const res = a.resultados && a.resultados.length ? a.resultados[0] : null
           const ok  = res ? res.acertou : null
