@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gol Match BR — Análise Estatística de Futebol</title>
+
+  <!-- Meta Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '2261733194351917');
+  fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=2261733194351917&ev=PageView&noscript=1"
+  /></noscript>
+  <!-- End Meta Pixel Code -->
+
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --verde: #00c48c;
+      --verde-escuro: #00956a;
+      --fundo: #080f0a;
+      --fundo2: #0d1a10;
+      --card: #111d14;
+      --borda: rgba(0,196,140,0.15);
+      --texto: #e8f0ea;
+      --texto2: #7a9a80;
+      --vermelho: #e94560;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--fundo);
+      color: var(--texto);
+      font-family: 'DM Sans', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(0,196,140,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--verde), transparent);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,196,140,0.1);
+      border: 1px solid var(--borda);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 13px;
+      color: var(--verde);
+      letter-spacing: 0.05em;
+      margin-bottom: 32px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .badge span {
+      width: 6px;
+      height: 6px;
+      background: var(--verde);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    .hero h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(64px, 12vw, 140px);
+      line-height: 0.9;
+      letter-spacing: 0.02em;
+      color: #fff;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    .hero h1 em {
+      color: var(--verde);
+      font-style: normal;
+    }
+
+    .hero p {
+      max-width: 560px;
+      font-size: clamp(16px, 2vw, 19px);
+      color: var(--texto2);
+      line-height: 1.6;
+      margin-top: 24px;
+      font-weight: 300;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+
+    .hero-cta {
+      margin-top: 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--verde);
+      color: #000;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 17px;
+      font-weight: 600;
+      padding: 18px 40px;
+      border-radius: 100px;
+      text-decoration: none;
+      transition: all 0.2s;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-primary:hover {
+      background: var(--verde-escuro);
+      transform: translateY(-2px);
+      box-shadow: 0 20px 60px rgba(0,196,140,0.3);
+    }
+
+    .btn-price {
+      font-size: 13px;
+      color: var(--texto2);
+    }
+
+    .btn-price strong {
+      color: var(--verde);
+    }
+
+    /* ── STATS BAR ── */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      border-top: 1px solid var(--borda);
+      border-bottom: 1px solid var(--borda);
+      background: var(--fundo2);
+      overflow: hidden;
+    }
+
+    .stat-item {
+      flex: 1;
+      max-width: 220px;
+      padding: 28px 24px;
+      text-align: center;
+      border-right: 1px solid var(--borda);
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .stat-item:last-child { border-right: none; }
+
+    .stat-num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 48px;
+      color: var(--verde);
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--texto2);
+      margin-top: 4px;
+    }
+
+    /* ── SEÇÕES ── */
+    section {
+      position: relative;
+      z-index: 1;
+      padding: 100px 24px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 12px;
+      letter-spacing: 0.15em;
+      color: var(--verde);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(42px, 6vw, 72px);
+      line-height: 1;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+
+    .section-sub {
+      font-size: 17px;
+      color: var(--texto2);
+      max-width: 560px;
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    /* ── COMO FUNCIONA ── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 2px;
+      margin-top: 64px;
+      background: var(--borda);
+      border: 1px solid var(--borda);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .step {
+      background: var(--card);
+      padding: 40px 32px;
+      position: relative;
+      transition: background 0.2s;
+    }
+
+    .step:hover { background: #162219; }
+
+    .step-num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 72px;
+      color: rgba(0,196,140,0.1);
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+
+    .step h3 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
+    .step p {
+      font-size: 15px;
+      color: var(--texto2);
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    .step-icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(0,196,140,0.1);
+      border: 1px solid var(--borda);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+
+    /* ── LIGAS ── */
+    .ligas-section {
+      background: var(--fundo2);
+      border-top: 1px solid var(--borda);
+      border-bottom: 1px solid var(--borda);
+    }
+
+    .ligas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 48px;
+    }
+
+    .liga-card {
+      background: var(--card);
+      border: 1px solid var(--borda);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.2s;
+    }
+
+    .liga-card:hover {
+      border-color: var(--verde);
+      transform: translateY(-2px);
+    }
+
+    .liga-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .liga-dot.p1 { background: var(--verde); }
+    .liga-dot.p2 { background: #5bb8a0; }
+    .liga-dot.p3 { background: #2d7a60; }
+
+    .liga-nome {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--texto);
+    }
+
+    .liga-pais {
+      font-size: 12px;
+      color: var(--texto2);
+    }
+
+    /* ── BENEFÍCIOS ── */
+    .beneficios {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      margin-top: 64px;
+      align-items: center;
+    }
+
+    .beneficio-list {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .beneficio-item {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .beneficio-icon {
+      width: 40px;
+      height: 40px;
+      background: rgba(0,196,140,0.1);
+      border: 1px solid var(--borda);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .beneficio-text h4 {
+      font-size: 17px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .beneficio-text p {
+      font-size: 14px;
+      color: var(--texto2);
+      line-height: 1.5;
+      font-weight: 300;
+    }
+
+    .card-preview {
+      background: var(--card);
+      border: 1px solid var(--borda);
+      border-radius: 20px;
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-preview::before {
+      content: '';
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(0,196,140,0.08) 0%, transparent 70%);
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--borda);
+    }
+
+    .preview-logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      color: var(--verde);
+    }
+
+    .preview-badge {
+      background: rgba(0,196,140,0.1);
+      border: 1px solid var(--borda);
+      border-radius: 100px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--verde);
+    }
+
+    .preview-jogo {
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .preview-times {
+      font-size: 15px;
+      color: var(--texto2);
+      margin-bottom: 8px;
+    }
+
+    .preview-placar {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 48px;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .preview-result {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 32px;
+      color: var(--verde);
+      margin-top: 8px;
+    }
+
+    .preview-stat {
+      background: rgba(0,196,140,0.05);
+      border: 1px solid var(--borda);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--texto2);
+      text-align: center;
+    }
+
+    .preview-stat strong { color: var(--verde); }
+
+    /* ── PREÇO ── */
+    .preco-section {
+      text-align: center;
+    }
+
+    .preco-card {
+      max-width: 480px;
+      margin: 64px auto 0;
+      background: var(--card);
+      border: 1px solid var(--borda);
+      border-radius: 24px;
+      padding: 48px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .preco-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--verde), transparent);
+    }
+
+    .preco-valor {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 96px;
+      color: var(--verde);
+      line-height: 1;
+    }
+
+    .preco-valor sup {
+      font-size: 36px;
+      vertical-align: top;
+      margin-top: 16px;
+      display: inline-block;
+    }
+
+    .preco-periodo {
+      font-size: 15px;
+      color: var(--texto2);
+      margin-bottom: 32px;
+    }
+
+    .preco-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 40px;
+      text-align: left;
+    }
+
+    .preco-features li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      color: var(--texto);
+    }
+
+    .preco-features li::before {
+      content: '';
+      width: 18px;
+      height: 18px;
+      background: rgba(0,196,140,0.15);
+      border: 1px solid var(--verde);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-5' stroke='%2300c48c' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .btn-primary-lg {
+      display: block;
+      background: var(--verde);
+      color: #000;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      padding: 20px;
+      border-radius: 100px;
+      text-decoration: none;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .btn-primary-lg:hover {
+      background: var(--verde-escuro);
+      transform: translateY(-2px);
+      box-shadow: 0 20px 60px rgba(0,196,140,0.3);
+    }
+
+    .preco-garantia {
+      font-size: 13px;
+      color: var(--texto2);
+      margin-top: 16px;
+    }
+
+    /* ── FAQ ── */
+    .faq-list {
+      max-width: 680px;
+      margin: 48px auto 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .faq-item {
+      background: var(--card);
+      border: 1px solid var(--borda);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .faq-q {
+      width: 100%;
+      background: none;
+      border: none;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      color: var(--texto);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      text-align: left;
+      gap: 16px;
+    }
+
+    .faq-q:hover { color: var(--verde); }
+
+    .faq-arrow {
+      color: var(--verde);
+      font-size: 20px;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    .faq-item.open .faq-arrow { transform: rotate(45deg); }
+
+    .faq-a {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      padding: 0 24px;
+      font-size: 15px;
+      color: var(--texto2);
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    .faq-item.open .faq-a {
+      max-height: 200px;
+      padding: 0 24px 20px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--borda);
+      padding: 40px 24px;
+      text-align: center;
+    }
+
+    .footer-logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      color: var(--verde);
+      margin-bottom: 8px;
+    }
+
+    .footer-text {
+      font-size: 13px;
+      color: var(--texto2);
+    }
+
+    /* ── ANIMAÇÕES ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* ── RESPONSIVO ── */
+    @media (max-width: 768px) {
+      .stats-bar { flex-wrap: wrap; }
+      .stat-item { min-width: 50%; border-bottom: 1px solid var(--borda); }
+      .beneficios { grid-template-columns: 1fr; }
+      .card-preview { display: none; }
+      .ligas-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ── HISTÓRICO ── */
+    .historico-section { background: var(--fundo2); border-top: 1px solid var(--borda); border-bottom: 1px solid var(--borda); }
+    .historico-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 40px; flex-wrap: wrap; gap: 16px; }
+    .historico-stats { display: flex; gap: 32px; }
+    .hist-stat { text-align: right; }
+    .hist-stat-num { font-family: "Bebas Neue", sans-serif; font-size: 36px; line-height: 1; color: var(--verde); }
+    .hist-stat-label { font-size: 12px; color: var(--texto2); margin-top: 2px; }
+    .hist-wrapper {
+      background: var(--card);
+      border: 1px solid var(--borda);
+      border-radius: 16px;
+      overflow: hidden;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+    .hist-wrapper::-webkit-scrollbar { width: 4px; }
+    .hist-wrapper::-webkit-scrollbar-track { background: transparent; }
+    .hist-wrapper::-webkit-scrollbar-thumb { background: rgba(0,196,140,0.25); border-radius: 4px; }
+    .hist-wrapper::-webkit-scrollbar-thumb:hover { background: rgba(0,196,140,0.5); }
+    .historico-tabela { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .historico-tabela thead { position: sticky; top: 0; z-index: 2; background: var(--card); }
+    .historico-tabela th { text-align: left; padding: 12px 16px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--texto2); border-bottom: 1px solid var(--borda); font-weight: 500; }
+    .historico-tabela td { padding: 14px 16px; border-bottom: 1px solid rgba(0,196,140,0.06); color: var(--texto); vertical-align: middle; }
+    .historico-tabela tr:last-child td { border-bottom: none; }
+    .historico-tabela tr:hover td { background: rgba(0,196,140,0.03); }
+    .hist-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; letter-spacing: 0.03em; }
+    .hist-badge.acertou { background: rgba(0,196,140,0.12); color: var(--verde); border: 1px solid rgba(0,196,140,0.25); }
+    .hist-badge.errou { background: rgba(233,69,96,0.1); color: #e94560; border: 1px solid rgba(233,69,96,0.2); }
+    .hist-badge.pendente { background: rgba(255,255,255,0.05); color: var(--texto2); border: 1px solid rgba(255,255,255,0.1); }
+    .hist-jogo { font-weight: 500; color: #fff; }
+    .hist-liga { font-size: 12px; color: var(--texto2); margin-top: 2px; }
+    .hist-placar { font-family: "Bebas Neue", sans-serif; font-size: 18px; color: var(--verde); letter-spacing: 1px; }
+    .hist-placar.errou { color: #e94560; }
+    .hist-placar.pendente { color: var(--texto2); font-size: 14px; font-family: "DM Sans", sans-serif; }
+    .historico-loading, .historico-empty { text-align: center; padding: 48px; color: var(--texto2); font-size: 14px; }
+    @media (max-width: 640px) {
+      .historico-tabela th:nth-child(3), .historico-tabela td:nth-child(3) { display: none; }
+      .historico-tabela th:nth-child(4), .historico-tabela td:nth-child(4) { display: none; }
+      .hist-stat:not(:first-child) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div style="margin-bottom:24px"><img src="logo1.png" style="width:120px;height:120px;border-radius:50%;object-fit:cover;object-position:center;border:2px solid rgba(0,196,140,0.3);box-shadow:0 0 40px rgba(0,196,140,0.15)"/></div>
+    <div class="badge"><span></span> Análise automática • Todo dia às 8h</div>
+    <h1>Gol<br/><em>Match</em><br/>BR</h1>
+    <p>Inteligência artificial analisando 13 ligas de futebol todo dia. Receba a análise completa direto no seu Telegram antes dos jogos começarem.</p>
+    <div class="hero-cta">
+      <a href="#assinar" class="btn-primary">
+        Assinar agora
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <span class="btn-price">Por apenas <strong>R$27/mês</strong> · Cancele quando quiser</span>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <div class="stats-bar">
+    <div class="stat-item reveal">
+      <div class="stat-num">13</div>
+      <div class="stat-label">Ligas monitoradas</div>
+    </div>
+    <div class="stat-item reveal">
+      <div class="stat-num">3x</div>
+      <div class="stat-label">Análises por dia</div>
+    </div>
+    <div class="stat-item reveal">
+      <div class="stat-num">8h</div>
+      <div class="stat-label">Entrega no Telegram</div>
+    </div>
+    <div class="stat-item reveal">
+      <div class="stat-num">100%</div>
+      <div class="stat-label">Baseado em dados</div>
+    </div>
+  </div>
+
+  <!-- COMO FUNCIONA -->
+  <section>
+    <div class="container">
+      <div class="reveal">
+        <div class="section-label">Como funciona</div>
+        <h2 class="section-title">Dados antes<br/>do apito</h2>
+        <p class="section-sub">Um modelo estatístico próprio coleta e processa dados de 13 ligas todos os dias — forma recente, confrontos históricos e probabilidades reais.</p>
+      </div>
+      <div class="steps reveal">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-icon">⚙️</div>
+          <h3>IA coleta os dados</h3>
+          <p>Todo dia, o agente busca automaticamente os jogos do dia em 13 ligas — forma recente, histórico de confrontos e probabilidades.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-icon">📊</div>
+          <h3>Modelo estatístico</h3>
+          <p>Um modelo matemático analisa os dados e identifica os jogos com maior vantagem estatística — sem feeling, sem achismo.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <div class="step-icon">📱</div>
+          <h3>Você recebe no Telegram</h3>
+          <p>A análise completa chega no seu Telegram às 8h da manhã, antes dos jogos começarem. Tempo de sobra para se preparar.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">04</div>
+          <div class="step-icon">✅</div>
+          <h3>Resultado em tempo real</h3>
+          <p>Quando o jogo termina, você recebe o resultado automaticamente — e o histórico acumulado fica disponível para acompanhar.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIGAS -->
+  <section class="ligas-section">
+    <div class="container">
+      <div class="reveal">
+        <div class="section-label">Cobertura</div>
+        <h2 class="section-title">13 ligas,<br/>todo dia</h2>
+        <p class="section-sub">Das principais competições do futebol mundial ao Brasileirão — tudo monitorado automaticamente.</p>
+      </div>
+      <div class="ligas-grid reveal">
+        <div class="liga-card"><div class="liga-dot p1"></div><div><div class="liga-nome">Brasileirão</div><div class="liga-pais">Série A</div></div></div>
+        <div class="liga-card"><div class="liga-dot p1"></div><div><div class="liga-nome">Champions League</div><div class="liga-pais">Europa</div></div></div>
+        <div class="liga-card"><div class="liga-dot p1"></div><div><div class="liga-nome">Premier League</div><div class="liga-pais">Inglaterra</div></div></div>
+        <div class="liga-card"><div class="liga-dot p1"></div><div><div class="liga-nome">Libertadores</div><div class="liga-pais">América do Sul</div></div></div>
+        <div class="liga-card"><div class="liga-dot p2"></div><div><div class="liga-nome">La Liga</div><div class="liga-pais">Espanha</div></div></div>
+        <div class="liga-card"><div class="liga-dot p2"></div><div><div class="liga-nome">Bundesliga</div><div class="liga-pais">Alemanha</div></div></div>
+        <div class="liga-card"><div class="liga-dot p2"></div><div><div class="liga-nome">Serie A</div><div class="liga-pais">Itália</div></div></div>
+        <div class="liga-card"><div class="liga-dot p2"></div><div><div class="liga-nome">Ligue 1</div><div class="liga-pais">França</div></div></div>
+        <div class="liga-card"><div class="liga-dot p3"></div><div><div class="liga-nome">Championship</div><div class="liga-pais">Inglaterra</div></div></div>
+        <div class="liga-card"><div class="liga-dot p3"></div><div><div class="liga-nome">Eredivisie</div><div class="liga-pais">Holanda</div></div></div>
+        <div class="liga-card"><div class="liga-dot p3"></div><div><div class="liga-nome">Primeira Liga</div><div class="liga-pais">Portugal</div></div></div>
+        <div class="liga-card"><div class="liga-dot p3"></div><div><div class="liga-nome">Copa do Mundo</div><div class="liga-pais">Internacional</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BENEFÍCIOS -->
+  <section>
+    <div class="container">
+      <div class="beneficios">
+        <div>
+          <div class="reveal">
+            <div class="section-label">O que você recebe</div>
+            <h2 class="section-title">Análise completa<br/>todo dia</h2>
+          </div>
+          <div class="beneficio-list reveal">
+            <div class="beneficio-item">
+              <div class="beneficio-icon">🤖</div>
+              <div class="beneficio-text">
+                <h4>Análise por inteligência artificial</h4>
+                <p>Modelo estatístico baseado em forma recente, histórico H2H e distribuição de probabilidades — sem opinião humana.</p>
+              </div>
+            </div>
+            <div class="beneficio-item">
+              <div class="beneficio-icon">⚡</div>
+              <div class="beneficio-text">
+                <h4>Entrega automática às 8h</h4>
+                <p>Todo dia, sem falta. O agente roda sozinho e envia direto no seu Telegram antes dos jogos começarem.</p>
+              </div>
+            </div>
+            <div class="beneficio-item">
+              <div class="beneficio-icon">📈</div>
+              <div class="beneficio-text">
+                <h4>Histórico e taxa de acerto</h4>
+                <p>Acompanhe a performance acumulada dos últimos 30 dias com total transparência — acertos, erros e taxa geral.</p>
+              </div>
+            </div>
+            <div class="beneficio-item">
+              <div class="beneficio-icon">🔔</div>
+              <div class="beneficio-text">
+                <h4>Resultado em tempo real</h4>
+                <p>Quando o jogo termina, você recebe a notificação automática no grupo — sem precisar ficar procurando em lugar nenhum.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-preview reveal">
+          <div class="preview-header">
+            <div class="preview-logo">Gol Match BR</div>
+            <div class="preview-badge">Análise do dia</div>
+          </div>
+          <div class="preview-jogo">
+            <div class="preview-times">Flamengo x Palmeiras · Brasileirão</div>
+            <div class="preview-placar">2 x 1</div>
+            <div class="preview-result">ACERTOU</div>
+          </div>
+          <div class="preview-stat">
+            Probabilidade estimada: <strong>68%</strong> · Confirmado
+          </div>
+          <div class="preview-stat" style="margin-top:8px">
+            Últimos 30 dias: <strong>18/24 corretas · Taxa: 75%</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTÓRICO DE ANÁLISES -->
+  <section class="historico-section">
+    <div class="container">
+      <div class="historico-header reveal">
+        <div>
+          <div class="section-label">Transparência total</div>
+          <h2 class="section-title">Histórico de<br/>análises</h2>
+          <p class="section-sub">Acertos e erros em tempo real — sem esconder nada.</p>
+        </div>
+        <div class="historico-stats">
+          <div class="hist-stat"><div class="hist-stat-num" id="hist-taxa">—</div><div class="hist-stat-label">taxa de acerto</div></div>
+          <div class="hist-stat"><div class="hist-stat-num" id="hist-total">—</div><div class="hist-stat-label">análises</div></div>
+        </div>
+      </div>
+      <div class="hist-wrapper reveal">
+        <div class="historico-loading" id="hist-loading">Carregando histórico...</div>
+        <table class="historico-tabela" id="hist-tabela" style="display:none">
+          <thead><tr><th>Data</th><th>Jogo</th><th>Mercado</th><th>Placar</th><th>Resultado</th></tr></thead>
+          <tbody id="hist-tbody"></tbody>
+        </table>
+        <div class="historico-empty" id="hist-empty" style="display:none">Primeiras análises chegando em breve...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PREÇO -->
+  <section class="preco-section" id="assinar">
+    <div class="container">
+      <div class="reveal">
+        <div class="section-label">Plano</div>
+        <h2 class="section-title">Simples.<br/>Acessível.</h2>
+        <p class="section-sub">Um único plano com acesso completo a tudo.</p>
+      </div>
+      <div class="preco-card reveal">
+        <div class="preco-valor"><sup>R$</sup>27</div>
+        <div class="preco-periodo">por mês · cancele quando quiser</div>
+        <ul class="preco-features">
+          <li>Análise diária de 13 ligas no Telegram</li>
+          <li>3 envios por dia (8h, 13h e 19h)</li>
+          <li>Resultado em tempo real ao fim de cada jogo</li>
+          <li>Histórico e taxa de acerto dos últimos 30 dias</li>
+          <li>Modelo estatístico com H2H real e Poisson</li>
+        </ul>
+        <a href="https://pay.kiwify.com.br/SNnNXe7" class="btn-primary-lg">Assinar agora por R$27/mês</a>
+        <p class="preco-garantia">Cancele a qualquer momento · Sem fidelidade</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section>
+    <div class="container">
+      <div class="reveal" style="text-align:center">
+        <div class="section-label">Dúvidas</div>
+        <h2 class="section-title">Perguntas<br/>frequentes</h2>
+      </div>
+      <div class="faq-list reveal">
+        <div class="faq-item">
+          <button class="faq-q" onclick="toggleFaq(this)">
+            Como recebo as análises?
+            <span class="faq-arrow">+</span>
+          </button>
+          <div class="faq-a">Após a assinatura, você recebe acesso a um grupo privado no Telegram. Todo dia às 8h, 13h e 19h o agente envia automaticamente a análise dos jogos do dia.</div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-q" onclick="toggleFaq(this)">
+            O que é exatamente a análise estatística?
+            <span class="faq-arrow">+</span>
+          </button>
+          <div class="faq-a">É um modelo matemático que analisa a forma recente dos times (últimos 6 jogos), o histórico de confrontos diretos (H2H) e calcula probabilidades usando distribuição de Poisson. Tudo automatizado, sem opinião humana.</div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-q" onclick="toggleFaq(this)">
+            Quais ligas são monitoradas?
+            <span class="faq-arrow">+</span>
+          </button>
+          <div class="faq-a">Brasileirão Série A, Champions League, Premier League, Copa Libertadores, La Liga, Bundesliga, Serie A italiana, Ligue 1, Championship, Eredivisie, Primeira Liga portuguesa, Copa do Mundo e Eurocopa.</div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-q" onclick="toggleFaq(this)">
+            Posso cancelar quando quiser?
+            <span class="faq-arrow">+</span>
+          </button>
+          <div class="faq-a">Sim. Não há fidelidade nem multa. Você pode cancelar a qualquer momento diretamente pela plataforma Kiwify, sem precisar falar com ninguém.</div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-q" onclick="toggleFaq(this)">
+            A análise é uma garantia de resultado?
+            <span class="faq-arrow">+</span>
+          </button>
+          <div class="faq-a">Não. Análise estatística identifica vantagem matemática no longo prazo, mas não garante resultado em cada jogo individual. Variância faz parte de qualquer modelo probabilístico.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">Gol Match BR</div>
+    <p class="footer-text">Análise estatística automatizada de futebol · @golmatchbr</p>
+  </footer>
+
+  <script>
+    // Scroll reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible')
+          observer.unobserve(e.target)
+        }
+      })
+    }, { threshold: 0.1 })
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el))
+
+    // FAQ
+    function toggleFaq(btn) {
+      const item = btn.parentElement
+      const isOpen = item.classList.contains('open')
+      document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'))
+      if (!isOpen) item.classList.add('open')
+    }
+
+    // HISTÓRICO DE ANÁLISES
+    ;(async function() {
+      const SUPABASE_URL = 'https://oqncliufhmxdhhywaine.supabase.co'
+      const SUPABASE_KEY = 'sb_publishable_ZjmL7V6WW3DUtOS2Au17sQ_Ln2w2pUB'
+      async function sbFetch(q) {
+        const res = await fetch(SUPABASE_URL + '/rest/v1/' + q, {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+        })
+        return res.json()
+      }
+      function fmtData(d) { return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) }
+      try {
+        const apostas = await sbFetch('apostas?select=id,jogo,liga,mercado,data_jogo,resultados(gols_casa,gols_fora,acertou)&turno=eq.manha&order=data_jogo.desc&limit=50')
+        const loading = document.getElementById('hist-loading')
+        const tabela  = document.getElementById('hist-tabela')
+        const tbody   = document.getElementById('hist-tbody')
+        const empty   = document.getElementById('hist-empty')
+        const elTaxa  = document.getElementById('hist-taxa')
+        const elTotal = document.getElementById('hist-total')
+        loading.style.display = 'none'
+        if (!apostas || !apostas.length || apostas.error) { empty.style.display = 'block'; return }
+        const vistos = {}
+        const unicas = apostas.filter(a => { const k = a.jogo+a.data_jogo; if(vistos[k]) return false; vistos[k]=true; return true })
+        const comRes  = unicas.filter(a => a.resultados && a.resultados.length > 0)
+        const acertos = comRes.filter(a => a.resultados[0].acertou).length
+        elTaxa.textContent  = comRes.length ? Math.round(acertos/comRes.length*100) + '%' : '—'
+        elTotal.textContent = comRes.length || '—'
+        const semRes  = unicas.filter(a => !a.resultados || !a.resultados.length)
+        const ordenados = comRes.slice(0, 3).concat(semRes).concat(comRes.slice(3))
+        ordenados.forEach(a => {
+          const res = a.resultados && a.resultados.length ? a.resultados[0] : null
+          const ok  = res ? res.acertou : null
+          const tr  = document.createElement('tr')
+          const tdData = document.createElement('td'); tdData.textContent = fmtData(a.data_jogo); tdData.style.cssText = 'color:var(--texto2);font-size:13px'
+          const tdJogo = document.createElement('td'); tdJogo.innerHTML = '<div class="hist-jogo">' + a.jogo + '</div><div class="hist-liga">' + a.liga + '</div>'
+          const tdMerc = document.createElement('td'); tdMerc.textContent = a.mercado; tdMerc.style.cssText = 'color:var(--texto2);font-size:13px'
+          const tdPlacar = document.createElement('td')
+          if (res) { tdPlacar.innerHTML = '<span class="hist-placar ' + (ok?'':'errou') + '">' + res.gols_casa + ' x ' + res.gols_fora + '</span>' }
+          else { tdPlacar.innerHTML = '<span class="hist-placar pendente">—</span>' }
+          const tdRes = document.createElement('td')
+          if (res) { tdRes.innerHTML = '<span class="hist-badge ' + (ok?'acertou':'errou') + '">' + (ok?'✓ Acertou':'✗ Errou') + '</span>' }
+          else { tdRes.innerHTML = '<span class="hist-badge pendente">Pendente</span>' }
+          tr.appendChild(tdData); tr.appendChild(tdJogo); tr.appendChild(tdMerc); tr.appendChild(tdPlacar); tr.appendChild(tdRes)
+          tbody.appendChild(tr)
+        })
+        tabela.style.display = 'table'
+      } catch(e) {
+        document.getElementById('hist-loading').style.display = 'none'
+        document.getElementById('hist-empty').style.display = 'block'
+      }
+    })()
+  </script>
+</body>
+</html>
