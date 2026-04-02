@@ -13,7 +13,7 @@ const API_BASE = 'https://api.football-data.org/v4'
 // ─── SUPABASE ───
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
+  process.env.SUPABASE_SERVICE_KEY
 )
 
 // ─── RATE LIMITER ───
