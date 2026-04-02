@@ -132,4 +132,8 @@ async function popularResultados() {
   console.log('─────────────────────────────────────\n')
 }
 
-popularResultados().catch(console.error)
+if (require.main === module) {
+  popularResultados().catch(console.error)
+}
+
+module.exports = popularResultados

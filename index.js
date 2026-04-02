@@ -887,6 +887,7 @@ async function runAgent(turno) {
 const { postarContextoJogo } = require('./postContexto')
 const { postarConteudoEducativo } = require('./postEducativo')
 const { postarNoticia } = require('./postNoticia')
+const popularResultados = require('./popularResultados')
 
 async function runContexto() {
   console.log('\n[' + new Date().toISOString() + '] Post de contexto iniciado')
@@ -922,6 +923,7 @@ async function runEducativo(turno) {
 
 // ─── AGENDAMENTOS (só ativa quando executado diretamente, não quando importado) ───
 if (require.main === module) {
+  cron.schedule('55 7 * * *',       function() { popularResultados() },   { timezone: 'America/Sao_Paulo' })
   cron.schedule('0 8 * * *',        function() { runAgent('manha') },     { timezone: 'America/Sao_Paulo' })
   cron.schedule('0 12 * * *',       function() { runContexto() },         { timezone: 'America/Sao_Paulo' })
   cron.schedule('0 13 * * *',       function() { runAgent('tarde') },     { timezone: 'America/Sao_Paulo' })
