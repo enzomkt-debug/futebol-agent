@@ -45,13 +45,13 @@ async function popularResultados() {
   console.log('\n=== popularResultados.js ===')
   console.log('Buscando apostas passadas sem resultado...\n')
 
-  // 1. Apostas com data_jogo < hoje e turno = 'manha'
+  // 1. Apostas com data_jogo <= hoje e turno = 'manha'
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   const { data: apostas, error } = await supabase
     .from('apostas')
     .select('id, match_id, jogo, liga, mercado, data_jogo')
     .eq('turno', 'manha')
-    .lt('data_jogo', hoje)
+    .lte('data_jogo', hoje)
     .order('data_jogo', { ascending: true })
 
   if (error) {
