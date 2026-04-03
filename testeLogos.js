@@ -1,3 +1,7 @@
+if (!process.env.TEST_MODE && process.env.RAILWAY_ENVIRONMENT) {
+  console.log('Arquivo de teste — não executar em produção')
+  process.exit(0)
+}
 const axios = require('axios')
 const { createCanvas, loadImage } = require('canvas')
 const fs = require('fs')

@@ -1,3 +1,7 @@
+if (!process.env.TEST_MODE && process.env.RAILWAY_ENVIRONMENT) {
+  console.log('Arquivo de teste — não executar em produção')
+  process.exit(0)
+}
 require('dotenv').config()
 const { gerarESubirImagem, gerarESubirStory } = require('./gerarImagem')
 
