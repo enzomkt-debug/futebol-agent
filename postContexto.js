@@ -32,12 +32,21 @@ try {
 } catch(e) { console.log('Aviso: erro ao registrar fonte DejaVu:', e.message) }
 const FONTE = 'DejaVu Sans'
 
+const ALIASES = {
+  'athletico pr':        'Athletico Paranaense',
+  'cap':                 'Athletico Paranaense',
+  'ca paranaense':       'Athletico Paranaense',
+  'atletico paranaense': 'Athletico Paranaense',
+}
+
 async function buscarLogoTime(nomeTime) {
   if (!nomeTime) return null
   try {
-    let url = LOGOS[nomeTime]
+    const alias = ALIASES[nomeTime.toLowerCase()]
+    const nomeFinal = alias || nomeTime
+    let url = LOGOS[nomeFinal]
     if (!url) {
-      const nome = nomeTime.toLowerCase()
+      const nome = nomeFinal.toLowerCase()
       const chave = Object.keys(LOGOS).find(function(k) {
         const kl = k.toLowerCase()
         return kl.includes(nome) || nome.includes(kl)

@@ -14,6 +14,17 @@ const API_BASE = 'https://api.football-data.org/v4'
 // Mutex para monitorarResultados — impede execuções sobrepostas
 let monitorEmExecucao = false
 
+// ─── HANDLERS GLOBAIS DE CRASH ───
+process.on('uncaughtException', async function(err) {
+  console.error('UNCAUGHT EXCEPTION:', err.message)
+  await enviarAlerta('🔴 <b>CRASH — uncaughtException</b>\n' + err.message)
+  process.exit(1)
+})
+process.on('unhandledRejection', async function(reason) {
+  console.error('UNHANDLED REJECTION:', reason)
+  await enviarAlerta('🔴 <b>CRASH — unhandledRejection</b>\n' + String(reason))
+})
+
 // ─── SUPABASE ───
 const supabase = createClient(
   process.env.SUPABASE_URL,
