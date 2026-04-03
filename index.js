@@ -11,6 +11,9 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
 const ALERTA_CHAT_ID = '6116204841'
 const API_BASE = 'https://api.football-data.org/v4'
 
+// Mutex para monitorarResultados — impede execuções sobrepostas
+let monitorEmExecucao = false
+
 // ─── SUPABASE ───
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -354,6 +357,13 @@ async function gerarResultadoOntem() {
 // ─── MONITORAMENTO EM TEMPO REAL ───
 
 async function monitorarResultados() {
+  if (monitorEmExecucao) {
+    console.log('[monitor] Execução anterior ainda em andamento — pulando este tick')
+    return
+  }
+  monitorEmExecucao = true
+
+  try {
   // Carrega apostas de HOJE do Supabase (não de arquivo local)
   const apostas = await carregarApostasDoDia()
   if (!apostas || !apostas.length) return
@@ -413,6 +423,13 @@ async function monitorarResultados() {
     }
 
     console.log('Resultado notificado: ' + aposta.jogo + ' (' + placar + ') — ' + status)
+  }
+
+  } catch (err) {
+    console.error('[monitor] Erro inesperado:', err.message)
+    await enviarAlerta('🔴 <b>Monitor — Erro inesperado</b>\n' + err.message)
+  } finally {
+    monitorEmExecucao = false
   }
 }
 

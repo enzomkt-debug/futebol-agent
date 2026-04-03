@@ -49,7 +49,12 @@ async function buscarResultadoPartida(matchId) {
       golsFora: data.score?.fullTime?.away ?? null
     }
   } catch (err) {
-    console.error('  Erro ao buscar matchId ' + matchId + ':', err.response?.status || err.message)
+    const status = err.response?.status
+    if (status === 429) {
+      console.error('  ⚠️  Rate limit atingido (429) ao buscar matchId ' + matchId + ' — aguardar antes de continuar')
+    } else {
+      console.error('  Erro ao buscar matchId ' + matchId + ':', status || err.message)
+    }
     return null
   }
 }
@@ -58,14 +63,23 @@ async function popularResultados() {
   console.log('\n=== popularResultados.js ===')
   console.log('Buscando apostas passadas sem resultado...\n')
 
-  // 1. Apostas com data_jogo <= hoje e turno = 'manha'
+  // Delay de 10s para não conflitar com o rate limiter do index.js (runAgent das 8h)
+  await new Promise(r => setTimeout(r, 10000))
+
+  // 1. Apostas com data_jogo <= hoje e turno = 'manha' — limita aos últimos 30 dias
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+  const trintaDiasAtras = new Date()
+  trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30)
+  const dataLimite = trintaDiasAtras.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+
   const { data: apostas, error } = await supabase
     .from('apostas')
     .select('id, match_id, jogo, liga, mercado, data_jogo')
     .eq('turno', 'manha')
+    .gte('data_jogo', dataLimite)
     .lte('data_jogo', hoje)
     .order('data_jogo', { ascending: true })
+    .limit(30)
 
   if (error) {
     console.error('Erro ao buscar apostas:', error.message)
