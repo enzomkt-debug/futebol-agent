@@ -50,9 +50,17 @@ async function salvarApostasHojeSupabase(apostas, turno) {
         turno: turno
       }
     })
-    const { error } = await supabase.from('apostas').insert(registros)
+    // Filtra registros que já existem para evitar duplicatas
+    const novos = []
+    for (const r of registros) {
+      const { data: existe } = await supabase.from('apostas')
+        .select('id').eq('match_id', r.match_id).eq('data_jogo', r.data_jogo).limit(1)
+      if (!existe || !existe.length) novos.push(r)
+    }
+    if (!novos.length) { console.log('Apostas já existem no Supabase — nenhuma inserida'); return }
+    const { error } = await supabase.from('apostas').insert(novos)
     if (error) console.error('Erro ao salvar apostas no Supabase:', error.message)
-    else console.log(apostas.length + ' apostas salvas no Supabase')
+    else console.log(novos.length + ' apostas novas salvas no Supabase (' + (registros.length - novos.length) + ' já existiam)')
   } catch (err) {
     console.error('Erro Supabase salvarApostas:', err.message)
   }
