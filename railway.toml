@@ -1,0 +1,2 @@
+[deploy]
+ignoredPaths = ["assets/"]
