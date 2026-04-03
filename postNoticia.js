@@ -15,6 +15,19 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
 const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY
+const ALERTA_CHAT_ID = '6116204841'
+
+async function enviarAlerta(mensagem) {
+  try {
+    await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', {
+      chat_id: ALERTA_CHAT_ID,
+      text: mensagem,
+      parse_mode: 'HTML'
+    })
+  } catch (e) {
+    console.error('Erro ao enviar alerta Telegram:', e.message)
+  }
+}
 
 const VERMELHO = '#e94560'
 const AMARELO  = '#f5c842'
@@ -529,6 +542,7 @@ async function publicarViaZernio(caption, imageUrl, isStory) {
     return true
   } catch (e) {
     console.error('Erro Zernio (' + tipo + '):', e.response?.data || e.message)
+    await enviarAlerta('🔴 <b>postNoticia — Erro Zernio (' + tipo + ')</b>\n' + (e.response?.data?.message || e.message))
     return false
   }
 }

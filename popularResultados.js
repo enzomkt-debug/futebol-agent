@@ -10,6 +10,19 @@ const supabase = createClient(
 
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY
 const API_BASE = 'https://api.football-data.org/v4'
+const ALERTA_CHAT_ID = '6116204841'
+
+async function enviarAlerta(mensagem) {
+  try {
+    await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', {
+      chat_id: ALERTA_CHAT_ID,
+      text: mensagem,
+      parse_mode: 'HTML'
+    })
+  } catch (e) {
+    console.error('Erro ao enviar alerta Telegram:', e.message)
+  }
+}
 
 // Rate limiter: free tier = 10 req/min → 6.5s entre requests
 let ultimaRequisicao = 0
@@ -92,6 +105,7 @@ async function popularResultados() {
 
     if (!resultado) {
       console.log('erro na API')
+      await enviarAlerta('🔴 <b>popularResultados — Erro API</b>\nFalha ao buscar resultado de ' + aposta.jogo + ' (matchId: ' + aposta.match_id + ')')
       naoFinalizados++
       continue
     }
@@ -130,6 +144,10 @@ async function popularResultados() {
   console.log('  Já existiam:              ' + jaExistiam)
   console.log('  Jogos não finalizados:    ' + naoFinalizados)
   console.log('─────────────────────────────────────\n')
+
+  if (inseridos > 0) {
+    await enviarAlerta('✅ <b>popularResultados concluído</b>\n' + inseridos + ' resultado(s) inserido(s), ' + jaExistiam + ' já existiam, ' + naoFinalizados + ' não finalizados')
+  }
 }
 
 if (require.main === module) {

@@ -8,6 +8,7 @@ const { createClient } = require('@supabase/supabase-js')
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
+const ALERTA_CHAT_ID = '6116204841'
 const API_BASE = 'https://api.football-data.org/v4'
 
 // ─── SUPABASE ───
@@ -390,13 +391,23 @@ async function monitorarResultados() {
     await salvarNotificado(chave)
 
     await enviarTelegram(mensagem)
-    await salvarResultadosSupabase([aposta], [resultado])
+
+    try {
+      await salvarResultadosSupabase([aposta], [resultado])
+    } catch (err) {
+      await enviarAlerta('🔴 <b>Monitor — Erro Supabase</b>\nFalha ao salvar resultado de ' + aposta.jogo + '\n' + err.message)
+    }
 
     // Publica card de resultado no Instagram assim que o jogo finalizar
     const igJaPostado = await jaPostadoInstagram(aposta.matchId, hoje)
     if (!igJaPostado) {
-      await postarInstagram([aposta], [resultado], 'manha')
-      await marcarPostadoInstagram(aposta.matchId, hoje)
+      try {
+        await postarInstagram([aposta], [resultado], 'manha')
+        await marcarPostadoInstagram(aposta.matchId, hoje)
+        await enviarAlerta('✅ <b>Monitor — Instagram postado</b>\n' + emoji + ' ' + aposta.jogo + ' ' + placar + ' — ' + status)
+      } catch (err) {
+        await enviarAlerta('🔴 <b>Monitor — Erro Instagram</b>\nFalha ao publicar card de ' + aposta.jogo + '\n' + err.message)
+      }
     } else {
       console.log('Instagram já postado para ' + aposta.jogo + ' — pulando')
     }
@@ -449,6 +460,7 @@ async function buscarJogosProximosDias() {
 
   } catch (err) {
     console.error('Erro ao buscar jogos:', err.response?.data || err.message)
+    await enviarAlerta('⚠️ <b>API football-data.org — Erro</b>\nbuscarJogosProximosDias falhou\n' + (err.response?.status || err.message))
     return []
   }
 }
@@ -784,6 +796,18 @@ async function enviarTelegram(mensagem) {
   }
 }
 
+async function enviarAlerta(mensagem) {
+  try {
+    await axios.post('https://api.telegram.org/bot' + TELEGRAM_TOKEN + '/sendMessage', {
+      chat_id: ALERTA_CHAT_ID,
+      text: mensagem,
+      parse_mode: 'HTML'
+    })
+  } catch (err) {
+    console.error('Erro ao enviar alerta:', err.message)
+  }
+}
+
 // ─── AGENTE PRINCIPAL ───
 
 async function runAgent(turno) {
@@ -873,6 +897,7 @@ async function runAgent(turno) {
     if (!todasApostas.length) {
       console.log('Nenhum value bet encontrado neste turno.')
       await enviarTelegram(gerarMensagem([], resultadoOntem, turno, null))
+      await enviarAlerta('⚠️ <b>runAgent(' + turno + ')</b>\nNenhuma aposta encontrada para o dia')
       return
     }
 
@@ -912,16 +937,26 @@ async function runAgent(turno) {
       const dataOntem = ontem.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
       const igJaPostado = await jaPostadoInstagram(apostasOntemParaInstagram[0].matchId, dataOntem)
       if (!igJaPostado) {
-        await postarInstagram(apostasOntemParaInstagram, resultadosReaisParaInstagram, turno)
-        await marcarPostadoInstagram(apostasOntemParaInstagram[0].matchId, dataOntem)
+        try {
+          await postarInstagram(apostasOntemParaInstagram, resultadosReaisParaInstagram, turno)
+          await marcarPostadoInstagram(apostasOntemParaInstagram[0].matchId, dataOntem)
+        } catch (err) {
+          await enviarAlerta('🔴 <b>runAgent(manha) — Erro Instagram</b>\nFalha ao gerar/publicar card\n' + err.message)
+        }
       } else {
         console.log('Instagram já postado pelo monitor — pulando publicação no runAgent')
       }
     }
 
+    if (turno === 'manha') {
+      const nResultados = resultadosReaisParaInstagram.filter(Boolean).length
+      await enviarAlerta('✅ <b>runAgent(manha) concluído</b>\n' + top5.length + ' apostas geradas, ' + nResultados + ' resultados processados, Instagram postado')
+    }
+
   } catch (err) {
     console.error('Erro geral:', err.message)
     await enviarTelegram('Erro ao gerar analise de hoje. Voltamos em breve!')
+    await enviarAlerta('🔴 <b>runAgent(' + turno + ') — Erro geral</b>\n' + err.message)
   }
 
   console.log('[' + new Date().toISOString() + '] Agente finalizado')
