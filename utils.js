@@ -22,24 +22,37 @@ async function subirImagemGithub(axios, caminhoLocal, nomeArquivo) {
     const conteudo = fs.readFileSync(caminhoLocal)
     const base64 = conteudo.toString('base64')
 
-    let sha = null
-    try {
-      const getRes = await axios.get(
-        'https://api.github.com/repos/' + GITHUB_REPO + '/contents/assets/' + nomeArquivo,
-        { headers: { Authorization: 'token ' + GITHUB_TOKEN } }
-      )
-      sha = getRes.data.sha
-    } catch (e) {}
+    const apiUrl = 'https://api.github.com/repos/' + GITHUB_REPO + '/contents/assets/' + nomeArquivo
+    const headers = { Authorization: 'token ' + GITHUB_TOKEN }
+
+    const getSha = async () => {
+      try {
+        const getRes = await axios.get(apiUrl, { headers })
+        return getRes.data.sha
+      } catch (e) {
+        if (e.response && e.response.status === 404) return null
+        throw e
+      }
+    }
+
+    let sha = await getSha()
 
     // [skip ci] impede que o Railway faça redeploy ao detectar este commit
     const body = { message: 'Atualiza ' + nomeArquivo + ' [skip ci]', content: base64 }
     if (sha) body.sha = sha
 
-    await axios.put(
-      'https://api.github.com/repos/' + GITHUB_REPO + '/contents/assets/' + nomeArquivo,
-      body,
-      { headers: { Authorization: 'token ' + GITHUB_TOKEN } }
-    )
+    try {
+      await axios.put(apiUrl, body, { headers })
+    } catch (e) {
+      // 409 = conflito: arquivo existe mas SHA estava desatualizado; busca SHA fresh e tenta de novo
+      if (e.response && e.response.status === 409) {
+        sha = await getSha()
+        if (sha) body.sha = sha
+        await axios.put(apiUrl, body, { headers })
+      } else {
+        throw e
+      }
+    }
 
     const urlPublica = 'https://raw.githubusercontent.com/' + GITHUB_REPO + '/main/assets/' + nomeArquivo + '?t=' + Date.now()
     console.log('Imagem subida para GitHub:', urlPublica)

@@ -40,9 +40,9 @@ function ehRelevante(texto) {
 // ─── RSS ──────────────────────────────────────────────────────────────────────
 
 const FEEDS = [
-  { nome: 'UOL',   url: 'https://rss.uol.com.br/feed/esportes.xml' },
-  { nome: 'GE',    url: 'https://ge.globo.com/rss/ge.xml' },
-  { nome: 'Lance', url: 'https://www.lance.com.br/feed/' },
+  { nome: 'IG Esporte',  url: 'https://esporte.ig.com.br/rss' },
+  { nome: 'Metropoles',  url: 'https://www.metropoles.com/esportes/feed' },
+  { nome: 'Folha',       url: 'https://feeds.folha.uol.com.br/esporte/rss091.xml' },
 ]
 
 function extrairTag(xml, tag) {
@@ -55,6 +55,16 @@ function extrairAttr(xml, tag, attr) {
   const re = new RegExp('<' + tag + '[^>]*\\s' + attr + '=["\']([^"\']+)["\']', 'i')
   const m = xml.match(re)
   return m ? m[1] : ''
+}
+
+function decodeHtml(str) {
+  return str
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&apos;/g, "'")
+    .replace(/&#039;/g, "'")
 }
 
 function parseItens(xml) {
@@ -82,7 +92,7 @@ function parseItens(xml) {
       const ts = Date.parse(pubDate)
       if (!isNaN(ts) && ts < limite) continue
     }
-    itens.push({ titulo, desc, link, imgUrl })
+    itens.push({ titulo: decodeHtml(titulo), desc: decodeHtml(desc), link, imgUrl })
   }
   return itens
 }
@@ -111,9 +121,26 @@ async function buscarNoticiaRSS() {
 
 // ─── IMAGEM ───────────────────────────────────────────────────────────────────
 
+function extrairPalavrasChave(titulo) {
+  // Remove pontuação e palavras genéricas, mantém nomes próprios e termos relevantes
+  const stopwords = new Set([
+    'a','o','as','os','e','de','do','da','dos','das','em','no','na','nos','nas',
+    'por','para','com','se','que','um','uma','ao','à','pelo','pela','após','ante',
+    'mas','ou','nem','vai','vai','ser','está','são','foi','com','não','mais','já',
+    'sobre','contra','após','seus','sua','seu','quer','ser','isso','este','esse'
+  ])
+  const palavras = titulo
+    .replace(/["""''():;!?]/g, ' ')
+    .split(/\s+/)
+    .filter(p => p.length > 2 && !stopwords.has(p.toLowerCase()))
+    .slice(0, 5)
+  return palavras.join(' ') || titulo.slice(0, 40)
+}
+
 async function buscarImagemGoogle(query) {
   try {
-    const q = encodeURIComponent(query + ' futebol')
+    const keywords = extrairPalavrasChave(query)
+    const q = encodeURIComponent(keywords + ' futebol')
     const res = await axios.get('https://www.google.com/search?q=' + q + '&tbm=isch&hl=pt-BR', {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120',
