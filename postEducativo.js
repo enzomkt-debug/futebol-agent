@@ -198,10 +198,12 @@ async function gerarTextoFormato1(jogos, h2hData, turno) {
   }
 }
 
-async function gerarTextoFormato2(jogos, h2hData) {
+async function gerarTextoFormato2(jogos, h2hData, turno) {
+  const turnoLabel = turno === 'tarde' ? 'tarde' : 'manha'
   const resposta = await chamarClaude(
     'Voce e um especialista em estatistica de futebol. NUNCA mencione apostas, odds, palpites ou ganho financeiro.\n\n' +
     'Jogos:\n' + listaJogos(jogos) + formatarH2H(h2hData) + '\n\n' +
+    'Este e o post do turno ' + turnoLabel + '. Escolha um numero/estatistica COMPLETAMENTE DIFERENTE do que seria destacado no turno oposto. Varie entre: gols marcados, aproveitamento, sequencias de jogos, confrontos diretos, gols sofridos, jogos sem perder, etc.\n\n' +
     'Escolha o confronto mais interessante. Retorne EXATAMENTE neste formato:\n' +
     'NUMERO: [so o numero ou percentual mais impactante, ex: "73%" ou "8" — maximo 5 caracteres]\n' +
     'DESCRICAO: [o que esse numero significa, maximo 8 palavras]\n' +
@@ -218,10 +220,12 @@ async function gerarTextoFormato2(jogos, h2hData) {
   }
 }
 
-async function gerarTextoFormato3(jogos, h2hData) {
+async function gerarTextoFormato3(jogos, h2hData, turno) {
+  const turnoLabel = turno === 'tarde' ? 'tarde' : 'manha'
   const resposta = await chamarClaude(
     'Voce e um especialista em estatistica de futebol. NUNCA mencione apostas, odds, palpites ou ganho financeiro.\n\n' +
     'Jogos:\n' + listaJogos(jogos) + formatarH2H(h2hData) + '\n\n' +
+    'Este e o post do turno ' + turnoLabel + '. Gere uma pergunta/cenario COMPLETAMENTE DIFERENTE do que seria gerado no turno oposto. Varie os angulos: goleiro heroi, primeiro gol, virada, defesa decisiva, jogador especifico, atmosfera do estadio, etc.\n\n' +
     'Escolha o confronto mais interessante. Retorne EXATAMENTE neste formato:\n' +
     'PERGUNTA: [pergunta suspense sobre o confronto, comeca com "E SE..." ou "O QUE ACONTECE SE...", maximo 10 palavras — a pergunta deve ser unica e diferente de variacoes obvias como "e se perder" ou "e se nao vencer" — seja mais criativo, ex: "E SE o goleiro for o heroi?", "E SE o primeiro gol definir tudo?"]\n' +
     'TIME_CASA: [nome curto time da casa, maximo 12 caracteres]\n' +
@@ -240,10 +244,12 @@ async function gerarTextoFormato3(jogos, h2hData) {
   }
 }
 
-async function gerarTextoFormato4(jogos, h2hData) {
+async function gerarTextoFormato4(jogos, h2hData, turno) {
+  const turnoLabel = turno === 'tarde' ? 'tarde' : 'manha'
   const resposta = await chamarClaude(
     'Voce e um especialista em estatistica de futebol. NUNCA mencione apostas, odds, palpites ou ganho financeiro.\n\n' +
     'Jogos:\n' + listaJogos(jogos) + formatarH2H(h2hData) + '\n\n' +
+    'Este e o post do turno ' + turnoLabel + '. Escolha 3 metricas COMPLETAMENTE DIFERENTES das que seriam usadas no turno oposto. Varie entre: gols marcados, gols sofridos, aproveitamento, posse de bola, chutes a gol, escanteios, cartoes, vitorias em casa/fora, sequencia invicto, etc.\n\n' +
     'Escolha o confronto mais interessante. Use dados reais dos ultimos 6 jogos. Retorne EXATAMENTE neste formato:\n' +
     'TIME_CASA: [nome curto time da casa, maximo 12 caracteres]\n' +
     'TIME_FORA: [nome curto time visitante, maximo 12 caracteres]\n' +
@@ -1043,37 +1049,37 @@ async function postarConteudoEducativo(jogos, h2hData, turno) {
 
     if (formato === 1) {
       const d = await gerarTextoFormato1(jogosOrdenados, h2hData, turno)
-      if (!d.curiosidade) return
+      if (!d.curiosidade) { console.log('Erro: Claude nao retornou CURIOSIDADE valida (Formato 1)'); return }
       const img = await buscarImagemUnsplash(d.query)
       feedPath = await gerarFeed_Formato1(d.curiosidade, d.confronto, img)
       storyPath = await gerarStory_Formato1(d.curiosidade, d.confronto, img)
       texto = d.texto
 
     } else if (formato === 2) {
-      const d = await gerarTextoFormato2(jogosOrdenados, h2hData)
-      if (!d.numero) return
+      const d = await gerarTextoFormato2(jogosOrdenados, h2hData, turno)
+      if (!d.numero) { console.log('Erro: Claude nao retornou NUMERO valido (Formato 2)'); return }
       feedPath = await gerarFeed_Formato2(d.numero, d.descricao, d.confronto)
       storyPath = await gerarStory_Formato2(d.numero, d.descricao, d.confronto)
       texto = d.texto
 
     } else if (formato === 3) {
-      const d = await gerarTextoFormato3(jogosOrdenados, h2hData)
-      if (!d.pergunta) return
+      const d = await gerarTextoFormato3(jogosOrdenados, h2hData, turno)
+      if (!d.pergunta) { console.log('Erro: Claude nao retornou PERGUNTA valida (Formato 3)'); return }
       const img = await buscarImagemUnsplash(d.query)
       feedPath = await gerarFeed_Formato3(d.pergunta, d.timeCasa, d.timeFora, d.confronto, img)
       storyPath = await gerarStory_Formato3(d.pergunta, d.timeCasa, d.timeFora, d.confronto, img)
       texto = d.texto
 
     } else {
-      const d = await gerarTextoFormato4(jogosOrdenados, h2hData)
-      if (!d.timeCasa) return
+      const d = await gerarTextoFormato4(jogosOrdenados, h2hData, turno)
+      if (!d.timeCasa) { console.log('Erro: Claude nao retornou TIME_CASA valido (Formato 4)'); return }
       feedPath = await gerarFeed_Formato4(d.timeCasa, d.timeFora, d.metricas)
       storyPath = await gerarStory_Formato4(d.timeCasa, d.timeFora, d.metricas)
       texto = d.texto
     }
 
     const urlFeed = await subirImagemGithub(axios, feedPath, 'card-educativo.png')
-    if (!urlFeed) return
+    if (!urlFeed) { console.log('Erro: nao foi possivel subir card-educativo.png para o GitHub'); return }
 
     const hashtags = gerarHashtags(texto || '')
     await publicarViaZernio((texto || '') + '\n\n' + hashtags, urlFeed)

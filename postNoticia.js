@@ -8,7 +8,7 @@ const { subirImagemGithub } = require('./utils')
 try {
   registerFont(path.join(__dirname, 'fonts', 'DejaVuSans.ttf'), { family: 'DejaVu Sans', weight: 'normal' })
   registerFont(path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'), { family: 'DejaVu Sans', weight: 'bold' })
-} catch (e) {}
+} catch (e) { console.log('Aviso: erro ao registrar fonte DejaVu:', e.message) }
 const FONTE = 'DejaVu Sans'
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
@@ -258,7 +258,7 @@ async function gerarCardNoticia(noticia, imgUrl) {
       const dw = img.width * scale
       const dh = img.height * scale
       ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh)
-    } catch (e) {}
+    } catch (e) { console.log('Aviso: nao foi possivel carregar imagem no card noticia (feed), usando fundo escuro:', e.message) }
   }
 
   // Overlay: transparente no topo → escuro na metade inferior
@@ -381,7 +381,7 @@ async function gerarCardNoticiaStory(noticia, imgUrl) {
       const dw = img.width * scale
       const dh = img.height * scale
       ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh)
-    } catch (e) {}
+    } catch (e) { console.log('Aviso: nao foi possivel carregar imagem no card noticia (story), usando fundo escuro:', e.message) }
   }
 
   // Overlay: transparente no topo → escuro nos 40% inferiores

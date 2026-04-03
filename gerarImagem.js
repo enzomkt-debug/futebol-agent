@@ -149,10 +149,13 @@ async function gerarImagem(apostas, turno, resultados) {
     ctx.fillStyle = '#ffffff'
     ctx.font = 'bold 52px ' + FONTE
     ctx.textAlign = 'center'
-    ctx.fillText('Primeiro dia de operacao!', 540, 520)
-    ctx.font = '28px ' + FONTE
+    ctx.fillText('Analises chegando!', 540, 480)
+    ctx.font = '30px ' + FONTE
     ctx.fillStyle = '#888899'
-    ctx.fillText('Acompanhe nossos resultados diarios', 540, 580)
+    ctx.fillText('Resultados serao publicados em breve.', 540, 545)
+    ctx.fillStyle = COR_TEMA
+    ctx.font = 'bold 28px ' + FONTE
+    ctx.fillText('Entre no grupo — Link na bio.', 540, 600)
     ctx.textAlign = 'left'
 
   } else if (isVerde) {
@@ -422,10 +425,13 @@ async function gerarImagemStory(apostas, resultados) {
   if (!temResultado) {
     ctx.fillStyle = '#ffffff'
     ctx.font = 'bold 60px ' + FONTE
-    ctx.fillText('Bem-vindo!', 540, 960)
-    ctx.font = '32px ' + FONTE
+    ctx.fillText('Analises chegando!', 540, 900)
+    ctx.font = '34px ' + FONTE
     ctx.fillStyle = '#888899'
-    ctx.fillText('Acompanhe nossos resultados', 540, 1020)
+    ctx.fillText('Resultados serao publicados em breve.', 540, 970)
+    ctx.fillStyle = COR_TEMA
+    ctx.font = 'bold 32px ' + FONTE
+    ctx.fillText('Entre no grupo — Link na bio.', 540, 1040)
     ctx.textAlign = 'left'
   } else if (isVerde) {
     ctx.fillStyle = '#00c48c'

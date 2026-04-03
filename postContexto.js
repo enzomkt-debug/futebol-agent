@@ -13,7 +13,7 @@ const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 try {
   registerFont(path.join(__dirname, 'fonts', 'DejaVuSans.ttf'), { family: 'DejaVu Sans', weight: 'normal' })
   registerFont(path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'), { family: 'DejaVu Sans', weight: 'bold' })
-} catch(e) {}
+} catch(e) { console.log('Aviso: erro ao registrar fonte DejaVu:', e.message) }
 const FONTE = 'DejaVu Sans'
 
 async function buscarLogoTime(nomeTime) {
@@ -35,8 +35,12 @@ async function buscarLogoTime(nomeTime) {
   }
 }
 
-async function gerarTextoComClaude(jogo) {
+async function gerarTextoComClaude(jogo, turno) {
   try {
+    const turnoLabel = turno === 'tarde' ? 'tarde' : 'manha'
+    const angulo = turno === 'tarde'
+      ? 'Foque em um angulo DIFERENTE do post da manha: explore o historico de confrontos diretos, o momento atual dos clubes ou uma estatistica defensiva relevante.'
+      : 'Foque no contexto geral do confronto: importancia do jogo, forma recente dos times ou estatistica ofensiva marcante.'
     const prompt = `Voce e um especialista em futebol e analise estatistica brasileiro.
 Gere um post curto e envolvente para o Instagram sobre esse jogo:
 
@@ -44,6 +48,8 @@ Time casa: ${jogo.timeCasa}
 Time fora: ${jogo.timeFora}
 Liga: ${jogo.liga}
 Data: ${jogo.dataJogo}
+
+Este e o post do turno ${turnoLabel}. ${angulo}
 
 O post deve:
 - Ter no maximo 5 linhas
@@ -272,7 +278,7 @@ async function publicarViaZernio(caption, imageUrl) {
   }
 }
 
-async function postarContextoJogo(jogoDestaque) {
+async function postarContextoJogo(jogoDestaque, turno) {
   if (!jogoDestaque) {
     console.log('Nenhum jogo destaque para postar contexto.')
     return
@@ -283,11 +289,16 @@ async function postarContextoJogo(jogoDestaque) {
     return
   }
 
+  if (!ANTHROPIC_API_KEY) {
+    console.log('ANTHROPIC_API_KEY nao configurada — post de contexto cancelado.')
+    return
+  }
+
   try {
     console.log('Gerando post de contexto para:', jogoDestaque.timeCasa + ' x ' + jogoDestaque.timeFora)
 
-    const texto = await gerarTextoComClaude(jogoDestaque)
-    if (!texto) return
+    const texto = await gerarTextoComClaude(jogoDestaque, turno)
+    if (!texto) { console.log('Erro: Claude nao retornou texto para contexto — post cancelado'); return }
 
     const hashtags = gerarHashtags(jogoDestaque.liga)
     const caption = texto + '\n\n' + hashtags
