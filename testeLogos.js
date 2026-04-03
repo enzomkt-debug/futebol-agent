@@ -58,6 +58,8 @@ const SERIE_B = [
   { nome: 'Nautico',              pagina: '/brazil/nautico/' },
   { nome: 'Guarani',              pagina: '/brazil/guarani/' },
   { nome: 'Sao Bernardo',         pagina: '/brazil/sao-bernardo/' },
+  { nome: 'Santos',               pagina: '/brazil/santos/' },
+  { nome: 'Remo',                 pagina: '/brazil/clube-do-remo/' },
 ]
 
 // Champions / Europa frequentes
@@ -79,6 +81,7 @@ const SPAIN = [
   { nome: 'Sevilla',            pagina: '/spain/sevilla/' },
   { nome: 'Valencia',           pagina: '/spain/valencia/' },
   { nome: 'Villarreal',         pagina: '/spain/villarreal/' },
+  { nome: 'Rayo Vallecano',     pagina: '/spain/rayo-vallecano/' },
 ]
 
 const ITALY = [

@@ -293,6 +293,11 @@ const NOMES_TIMES = {
   'Vila Nova FC':                  'Vila Nova',
   'Clube do Remo':                 'Remo',
   'Chapecoense AF':                'Chapecoense',
+  'Santos FC':                     'Santos',
+  'Rayo Vallecano de Madrid':      'Rayo Vallecano',
+  'Elche CF':                      'Elche',
+  'Charlton Athletic FC':          'Charlton Athletic',
+  'Bristol City FC':               'Bristol City',
   // Premier League
   'Manchester City FC':            'Manchester City',
   'Arsenal FC':                    'Arsenal',
