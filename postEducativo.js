@@ -429,9 +429,11 @@ async function gerarStory_Formato1(curiosidade, confronto, imagemUrl) {
   ctx.font = 'bold 42px ' + FONTE
   ctx.fillText(confronto, W / 2, cY + cH - 60)
 
+  ctx.textAlign = 'center'
   ctx.fillStyle = VERDE
   ctx.font = 'bold 34px ' + FONTE
-  ctx.fillText('Quem esta no grupo ja sabe o que os dados dizem  •  Link na bio', W / 2, 1780)
+  ctx.fillText('Quem esta no grupo ja sabe o que os dados dizem', W / 2, 1730)
+  ctx.fillText('•  Link na bio', W / 2, 1772)
 
   console.log('Story educativo gerado (Formato 1)')
   return salvarCard(canvas, 'card-educativo-story.png')
