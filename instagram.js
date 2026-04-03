@@ -8,14 +8,17 @@ const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 const ALERTA_CHAT_ID = '6116204841'
 
 async function enviarAlerta(mensagem) {
+  const payload = { chat_id: ALERTA_CHAT_ID, text: mensagem, parse_mode: 'HTML' }
   try {
-    await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', {
-      chat_id: ALERTA_CHAT_ID,
-      text: mensagem,
-      parse_mode: 'HTML'
-    })
+    await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', payload)
   } catch (e) {
-    console.error('Erro ao enviar alerta Telegram:', e.message)
+    console.error('Erro ao enviar alerta (tentativa 1):', e.message)
+    try {
+      await new Promise(r => setTimeout(r, 5000))
+      await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', payload)
+    } catch (e2) {
+      console.error('Erro ao enviar alerta (tentativa 2):', e2.message)
+    }
   }
 }
 
@@ -49,7 +52,7 @@ Analise completa todo dia as 8h no Telegram. Link na bio para acessar.
   const taxa = total > 0 ? Math.round((acertos / total) * 100) : 0
   const destaqueRes = resultados[0]
   const placar = destaqueRes ? destaqueRes.golsCasa + ' x ' + destaqueRes.golsFora : ''
-  const probPct = Math.round((1/apostasOntem[0].odd + apostasOntem[0].edge)*100)
+  const probPct = (apostasOntem[0].odd && isFinite(apostasOntem[0].odd)) ? Math.round((1/apostasOntem[0].odd + (apostasOntem[0].edge || 0))*100) : 0
 
   if (destaqueAcertou) {
     return `✅ ACERTOU — ${hoje}
@@ -101,7 +104,8 @@ async function publicarViaZernio(caption, imageUrl) {
       headers: {
         'Authorization': 'Bearer ' + ZERNIO_API_KEY,
         'Content-Type': 'application/json'
-      }
+      },
+      timeout: 30000
     })
 
     console.log('Publicado com sucesso via Zernio!')
@@ -135,7 +139,8 @@ async function publicarStoryViaZernio(imageUrl) {
       headers: {
         'Authorization': 'Bearer ' + ZERNIO_API_KEY,
         'Content-Type': 'application/json'
-      }
+      },
+      timeout: 30000
     })
 
     console.log('Story publicado com sucesso!')

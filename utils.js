@@ -56,6 +56,8 @@ async function subirImagemGithub(axios, caminhoLocal, nomeArquivo) {
 
     const urlPublica = 'https://raw.githubusercontent.com/' + GITHUB_REPO + '/main/assets/' + nomeArquivo + '?t=' + Date.now()
     console.log('Imagem subida para GitHub:', urlPublica)
+    // Aguarda propagação do CDN do GitHub antes de retornar a URL
+    await new Promise(r => setTimeout(r, 5000))
     return urlPublica
 
   } catch (err) {

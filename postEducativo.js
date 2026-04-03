@@ -13,14 +13,17 @@ const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY
 const ALERTA_CHAT_ID = '6116204841'
 
 async function enviarAlerta(mensagem) {
+  const payload = { chat_id: ALERTA_CHAT_ID, text: mensagem, parse_mode: 'HTML' }
   try {
-    await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', {
-      chat_id: ALERTA_CHAT_ID,
-      text: mensagem,
-      parse_mode: 'HTML'
-    })
+    await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', payload)
   } catch (e) {
-    console.error('Erro ao enviar alerta Telegram:', e.message)
+    console.error('Erro ao enviar alerta (tentativa 1):', e.message)
+    try {
+      await new Promise(r => setTimeout(r, 5000))
+      await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', payload)
+    } catch (e2) {
+      console.error('Erro ao enviar alerta (tentativa 2):', e2.message)
+    }
   }
 }
 
@@ -98,7 +101,8 @@ async function buscarImagemUnsplash(query) {
     try {
       const res = await axios.get('https://api.unsplash.com/photos/random', {
         headers: { Authorization: 'Client-ID ' + UNSPLASH_ACCESS_KEY },
-        params: { query: q, orientation: 'squarish', content_filter: 'high' }
+        params: { query: q, orientation: 'squarish', content_filter: 'high' },
+        timeout: 15000
       })
       return res.data.urls.regular
     } catch (err) {

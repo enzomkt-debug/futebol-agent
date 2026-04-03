@@ -13,14 +13,17 @@ const API_BASE = 'https://api.football-data.org/v4'
 const ALERTA_CHAT_ID = '6116204841'
 
 async function enviarAlerta(mensagem) {
+  const payload = { chat_id: ALERTA_CHAT_ID, text: mensagem, parse_mode: 'HTML' }
   try {
-    await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', {
-      chat_id: ALERTA_CHAT_ID,
-      text: mensagem,
-      parse_mode: 'HTML'
-    })
+    await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', payload)
   } catch (e) {
-    console.error('Erro ao enviar alerta Telegram:', e.message)
+    console.error('Erro ao enviar alerta (tentativa 1):', e.message)
+    try {
+      await new Promise(r => setTimeout(r, 5000))
+      await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', payload)
+    } catch (e2) {
+      console.error('Erro ao enviar alerta (tentativa 2):', e2.message)
+    }
   }
 }
 

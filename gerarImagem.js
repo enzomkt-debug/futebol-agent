@@ -211,7 +211,7 @@ async function gerarImagem(apostas, turno, resultados) {
     arredondarRetangulo(ctx, 70, 605, 940, 130, 16)
     ctx.stroke()
 
-    const probPct = Math.round((1/apostas[0].odd + apostas[0].edge)*100)
+    const probPct = (apostas[0].odd && isFinite(apostas[0].odd)) ? Math.round((1/apostas[0].odd + (apostas[0].edge || 0))*100) : 0
 
     ctx.fillStyle = '#ffffff'
     ctx.font = 'bold 24px ' + FONTE
@@ -304,7 +304,7 @@ async function gerarImagem(apostas, turno, resultados) {
     arredondarRetangulo(ctx, 70, 585, 940, 150, 16)
     ctx.stroke()
 
-    const probPct = Math.round((1/apostas[0].odd + apostas[0].edge)*100)
+    const probPct = (apostas[0].odd && isFinite(apostas[0].odd)) ? Math.round((1/apostas[0].odd + (apostas[0].edge || 0))*100) : 0
 
     ctx.fillStyle = '#ffffff'
     ctx.font = 'bold 24px ' + FONTE
@@ -480,7 +480,7 @@ async function gerarImagemStory(apostas, resultados) {
     arredondarRetangulo(ctx, 60, 1020, 960, 160, 20)
     ctx.stroke()
 
-    const probPct = Math.round((1/apostas[0].odd + apostas[0].edge)*100)
+    const probPct = (apostas[0].odd && isFinite(apostas[0].odd)) ? Math.round((1/apostas[0].odd + (apostas[0].edge || 0))*100) : 0
     ctx.fillStyle = '#ffffff'
     ctx.font = 'bold 30px ' + FONTE
     ctx.fillText('Mercado: ' + apostas[0].mercado, 540, 1065)
@@ -558,7 +558,7 @@ async function gerarImagemStory(apostas, resultados) {
     arredondarRetangulo(ctx, 60, 1010, 960, 180, 20)
     ctx.stroke()
 
-    const probPct = Math.round((1/apostas[0].odd + apostas[0].edge)*100)
+    const probPct = (apostas[0].odd && isFinite(apostas[0].odd)) ? Math.round((1/apostas[0].odd + (apostas[0].edge || 0))*100) : 0
     ctx.fillStyle = '#ffffff'
     ctx.font = 'bold 30px ' + FONTE
     ctx.fillText('Mercado: ' + apostas[0].mercado, 540, 1055)

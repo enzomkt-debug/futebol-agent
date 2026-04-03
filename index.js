@@ -318,6 +318,16 @@ async function buscarResultadoPartida(matchId) {
       golsFora: data.score.fullTime.away
     }
   } catch (err) {
+    const status = err.response?.status
+    if (status === 429) {
+      console.error('Rate limit (429) ao buscar matchId ' + matchId)
+      await enviarAlerta('⚠️ <b>API football-data.org — Rate limit (429)</b>\nbuscarResultadoPartida matchId=' + matchId)
+    } else if (status === 403) {
+      console.error('Auth falhou (403) ao buscar matchId ' + matchId)
+      await enviarAlerta('🔴 <b>API football-data.org — Auth falhou (403)</b>\nVerificar API_FOOTBALL_KEY')
+    } else {
+      console.error('Erro ao buscar matchId ' + matchId + ':', status || err.message)
+    }
     return null
   }
 }
@@ -810,14 +820,17 @@ async function enviarTelegram(mensagem) {
 }
 
 async function enviarAlerta(mensagem) {
+  const payload = { chat_id: ALERTA_CHAT_ID, text: mensagem, parse_mode: 'HTML' }
   try {
-    await axios.post('https://api.telegram.org/bot' + TELEGRAM_TOKEN + '/sendMessage', {
-      chat_id: ALERTA_CHAT_ID,
-      text: mensagem,
-      parse_mode: 'HTML'
-    })
+    await axios.post('https://api.telegram.org/bot' + TELEGRAM_TOKEN + '/sendMessage', payload)
   } catch (err) {
-    console.error('Erro ao enviar alerta:', err.message)
+    console.error('Erro ao enviar alerta (tentativa 1):', err.message)
+    try {
+      await new Promise(r => setTimeout(r, 5000))
+      await axios.post('https://api.telegram.org/bot' + TELEGRAM_TOKEN + '/sendMessage', payload)
+    } catch (err2) {
+      console.error('Erro ao enviar alerta (tentativa 2):', err2.message)
+    }
   }
 }
 
@@ -994,6 +1007,7 @@ async function runContexto() {
     await postarContextoJogo(jogos[0])
   } catch (err) {
     console.error('Erro no post de contexto:', err.message)
+    await enviarAlerta('🔴 <b>runContexto — Erro</b>\n' + err.message)
   }
   console.log('[' + new Date().toISOString() + '] Post de contexto finalizado')
 }
@@ -1011,6 +1025,7 @@ async function runEducativo(turno) {
     await postarConteudoEducativo(jogos, h2hData, turno)
   } catch (err) {
     console.error('Erro no post educativo:', err.message)
+    await enviarAlerta('🔴 <b>runEducativo(' + turno + ') — Erro</b>\n' + err.message)
   }
   console.log('[' + new Date().toISOString() + '] Post educativo finalizado')
 }
