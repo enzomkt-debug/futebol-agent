@@ -388,10 +388,10 @@ async function gerarCardNoticia(noticia, imgUrl) {
   return caminho
 }
 
-// ─── CARD STORY 1080x1350 (4:5) ──────────────────────────────────────────────
+// ─── CARD STORY 1080x1920 ─────────────────────────────────────────────────────
 
 async function gerarCardNoticiaStory(noticia, imgUrl) {
-  const W = 1080, H = 1350
+  const W = 1080, H = 1920
   const canvas = createCanvas(W, H)
   const ctx = canvas.getContext('2d')
   const MARGIN = 70
