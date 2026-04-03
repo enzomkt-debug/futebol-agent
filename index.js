@@ -485,6 +485,8 @@ async function monitorarResultados() {
   const notificados = await carregarNotificados()
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 
+  const apostaPrincipal = apostas[0]
+
   for (const aposta of apostas) {
     const chave = hoje + '_' + aposta.matchId
     if (notificados[chave]) continue
@@ -514,6 +516,7 @@ async function monitorarResultados() {
     // Salva como notificado ANTES de enviar para evitar duplicatas em caso de falha parcial
     await salvarNotificado(chave)
 
+    // Telegram e Supabase: notifica TODAS as apostas
     await enviarTelegram(mensagem)
 
     try {
@@ -522,18 +525,21 @@ async function monitorarResultados() {
       await enviarAlerta('🔴 <b>Monitor — Erro Supabase</b>\nFalha ao salvar resultado de ' + aposta.jogo + '\n' + err.message)
     }
 
-    // Publica card de resultado no Instagram assim que o jogo finalizar
-    const igJaPostado = await jaPostadoInstagram(aposta.matchId, hoje)
-    if (!igJaPostado) {
-      try {
-        await postarInstagram([aposta], [resultado], 'manha')
-        await marcarPostadoInstagram(aposta.matchId, hoje)
-        await enviarAlerta('✅ <b>Monitor — Instagram postado</b>\n' + emoji + ' ' + aposta.jogo + ' ' + placar + ' — ' + status)
-      } catch (err) {
-        await enviarAlerta('🔴 <b>Monitor — Erro Instagram</b>\nFalha ao publicar card de ' + aposta.jogo + '\n' + err.message)
+    // Instagram: posta APENAS quando a aposta principal terminar
+    const ehPrincipal = aposta.matchId === apostaPrincipal.matchId
+    if (ehPrincipal) {
+      const igJaPostado = await jaPostadoInstagram(aposta.matchId, hoje)
+      if (!igJaPostado) {
+        try {
+          await postarInstagram([aposta], [resultado], 'manha')
+          await marcarPostadoInstagram(aposta.matchId, hoje)
+          await enviarAlerta('✅ <b>Monitor — Instagram postado</b>\n' + emoji + ' ' + aposta.jogo + ' ' + placar + ' — ' + status)
+        } catch (err) {
+          await enviarAlerta('🔴 <b>Monitor — Erro Instagram</b>\nFalha ao publicar card de ' + aposta.jogo + '\n' + err.message)
+        }
+      } else {
+        console.log('Instagram já postado para ' + aposta.jogo + ' — pulando')
       }
-    } else {
-      console.log('Instagram já postado para ' + aposta.jogo + ' — pulando')
     }
 
     console.log('Resultado notificado: ' + aposta.jogo + ' (' + placar + ') — ' + status)
