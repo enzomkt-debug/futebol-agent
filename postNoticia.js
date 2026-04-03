@@ -388,10 +388,10 @@ async function gerarCardNoticia(noticia, imgUrl) {
   return caminho
 }
 
-// ─── CARD STORY 1080x1920 ─────────────────────────────────────────────────────
+// ─── CARD STORY 1080x1350 (4:5) ──────────────────────────────────────────────
 
 async function gerarCardNoticiaStory(noticia, imgUrl) {
-  const W = 1080, H = 1920
+  const W = 1080, H = 1350
   const canvas = createCanvas(W, H)
   const ctx = canvas.getContext('2d')
   const MARGIN = 70
@@ -510,14 +510,16 @@ async function gerarCardNoticiaStory(noticia, imgUrl) {
 
 // ─── ZERNIO ───────────────────────────────────────────────────────────────────
 
-async function publicarViaZernio(caption, imageUrl, contentType) {
-  const tipo = contentType || 'feed'
+async function publicarViaZernio(caption, imageUrl, isStory) {
+  const plataforma = isStory
+    ? { platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID, platformSpecificData: { contentType: 'story' } }
+    : { platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }
+  const tipo = isStory ? 'story' : 'feed'
   try {
     await axios.post('https://zernio.com/api/v1/posts', {
-      platforms: [{ platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }],
+      platforms: [plataforma],
       content: caption,
       mediaItems: [{ type: 'image', url: imageUrl }],
-      contentType: tipo,
       publishNow: true
     }, {
       headers: {
@@ -575,8 +577,8 @@ async function postarNoticia() {
     ])
 
     // 5. Publica feed e story
-    if (urlFeed)  await publicarViaZernio(caption, urlFeed,  'feed')
-    if (urlStory) await publicarViaZernio('',      urlStory, 'story')
+    if (urlFeed)  await publicarViaZernio(caption, urlFeed,  false)
+    if (urlStory) await publicarViaZernio('',      urlStory, true)
 
   } catch (e) {
     console.error('Erro no post de noticia:', e.message)
