@@ -259,6 +259,30 @@ const LIGAS_PRIORIDADE = {
   2018: { prioridade: 4, nome: 'Eurocopa' }
 }
 
+// ─── NORMALIZAÇÃO DE NOMES DE TIMES ───
+const NOMES_TIMES = {
+  'SC Corinthians Paulista':       'Corinthians',
+  'SE Palmeiras':                  'Palmeiras',
+  'CA Paranaense':                 'Athletico PR',
+  'Athletico Paranaense':          'Athletico PR',
+  'EC Bahia':                      'Bahia',
+  'Fluminense FC':                 'Fluminense',
+  'Botafogo FR':                   'Botafogo',
+  'CR Flamengo':                   'Flamengo',
+  'SC Internacional':              'Internacional',
+  'Grêmio FBPA':                   'Grêmio',
+  'São Paulo FC':                  'São Paulo',
+  'Club de Regatas Vasco da Gama': 'Vasco',
+  'Clube do Remo':                 'Remo',
+  'Chapecoense AF':                'Chapecoense',
+  'CA Mineiro':                    'Atletico Mineiro',
+  'RB Bragantino':                 'Bragantino',
+}
+
+function normalizarNomeTime(nome) {
+  return NOMES_TIMES[nome] || nome
+}
+
 const DICAS = [
   'Odd 2.00 significa que a casa acha que tem 50% de chance. Se voce acha que tem 60%, ai existe valor real.',
   'Nunca aposte mais de 2% do seu bankroll em uma unica aposta. Consistencia bate sorte no longo prazo.',
@@ -474,8 +498,8 @@ async function buscarJogosProximosDias() {
         matchId: m.id,
         timeCasaId: m.homeTeam.id,
         timeForaId: m.awayTeam.id,
-        timeCasa: m.homeTeam.name,
-        timeFora: m.awayTeam.name,
+        timeCasa: normalizarNomeTime(m.homeTeam.name),
+        timeFora: normalizarNomeTime(m.awayTeam.name),
         liga: m.competition.name,
         ligaId: m.competition.id,
         prioridade: ligaConhecida ? ligaConhecida.prioridade : 99,
@@ -511,8 +535,8 @@ async function buscarJogosHoje() {
         matchId: m.id,
         timeCasaId: m.homeTeam.id,
         timeForaId: m.awayTeam.id,
-        timeCasa: m.homeTeam.name,
-        timeFora: m.awayTeam.name,
+        timeCasa: normalizarNomeTime(m.homeTeam.name),
+        timeFora: normalizarNomeTime(m.awayTeam.name),
         liga: m.competition.name,
         ligaId: m.competition.id,
         prioridade: ligaConhecida ? ligaConhecida.prioridade : 99,
