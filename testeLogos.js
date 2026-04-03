@@ -62,96 +62,317 @@ const SERIE_B = [
   { nome: 'Remo',                 pagina: '/brazil/clube-do-remo/' },
 ]
 
-// Champions / Europa frequentes
-const ENGLAND = [
-  { nome: 'Manchester City',    pagina: '/england/manchester-city/' },
-  { nome: 'Arsenal',            pagina: '/england/arsenal/' },
-  { nome: 'Liverpool',          pagina: '/england/liverpool/' },
-  { nome: 'Chelsea',            pagina: '/england/chelsea/' },
-  { nome: 'Manchester United',  pagina: '/england/manchester-united/' },
-  { nome: 'Tottenham',          pagina: '/england/tottenham/' },
-  { nome: 'Newcastle',          pagina: '/england/newcastle/' },
-  { nome: 'Aston Villa',        pagina: '/england/aston-villa/' },
+const PREMIER_LEAGUE = [
+  { nome: 'Arsenal',              pagina: '/england/arsenal/' },
+  { nome: 'Aston Villa',          pagina: '/england/aston-villa/' },
+  { nome: 'Bournemouth',          pagina: '/england/bournemouth/' },
+  { nome: 'Brentford',            pagina: '/england/brentford/' },
+  { nome: 'Brighton',             pagina: '/england/brighton/' },
+  { nome: 'Chelsea',              pagina: '/england/chelsea/' },
+  { nome: 'Crystal Palace',       pagina: '/england/crystal-palace/' },
+  { nome: 'Everton',              pagina: '/england/everton/' },
+  { nome: 'Fulham',               pagina: '/england/fulham/' },
+  { nome: 'Ipswich',              pagina: '/england/ipswich/' },
+  { nome: 'Leicester City',       pagina: '/england/leicester/' },
+  { nome: 'Liverpool',            pagina: '/england/liverpool/' },
+  { nome: 'Manchester City',      pagina: '/england/manchester-city/' },
+  { nome: 'Manchester United',    pagina: '/england/manchester-united/' },
+  { nome: 'Newcastle',            pagina: '/england/newcastle/' },
+  { nome: 'Nottingham Forest',    pagina: '/england/nottingham-forest/' },
+  { nome: 'Southampton',          pagina: '/england/southampton/' },
+  { nome: 'Tottenham',            pagina: '/england/tottenham/' },
+  { nome: 'West Ham',             pagina: '/england/west-ham/' },
+  { nome: 'Wolves',               pagina: '/england/wolves/' },
 ]
 
-const SPAIN = [
-  { nome: 'Real Madrid',        pagina: '/spain/real-madrid/' },
-  { nome: 'Barcelona',          pagina: '/spain/barcelona/' },
-  { nome: 'Atletico Madrid',    pagina: '/spain/atletico-madrid/' },
-  { nome: 'Sevilla',            pagina: '/spain/sevilla/' },
-  { nome: 'Valencia',           pagina: '/spain/valencia/' },
-  { nome: 'Villarreal',         pagina: '/spain/villarreal/' },
-  { nome: 'Rayo Vallecano',     pagina: '/spain/rayo-vallecano/' },
+const CHAMPIONSHIP = [
+  { nome: 'Birmingham City',      pagina: '/england/birmingham/' },
+  { nome: 'Blackburn Rovers',     pagina: '/england/blackburn-rovers/' },
+  { nome: 'Bristol City',         pagina: '/england/bristol-city/' },
+  { nome: 'Burnley',              pagina: '/england/burnley/' },
+  { nome: 'Charlton Athletic',    pagina: '/england/charlton/' },
+  { nome: 'Coventry City',        pagina: '/england/coventry-city/' },
+  { nome: 'Derby County',         pagina: '/england/derby-county/' },
+  { nome: 'Hull City',            pagina: '/england/hull-city/' },
+  { nome: 'Leeds United',         pagina: '/england/leeds-united/' },
+  { nome: 'Middlesbrough',        pagina: '/england/middlesbrough/' },
+  { nome: 'Millwall',             pagina: '/england/millwall/' },
+  { nome: 'Norwich City',         pagina: '/england/norwich-city/' },
+  { nome: 'Oxford United',        pagina: '/england/oxford-united/' },
+  { nome: 'Portsmouth',           pagina: '/england/portsmouth/' },
+  { nome: 'Preston North End',    pagina: '/england/preston-north-end/' },
+  { nome: 'QPR',                  pagina: '/england/queens-park-rangers/' },
+  { nome: 'Sheffield United',     pagina: '/england/sheffield-united/' },
+  { nome: 'Sheffield Wednesday',  pagina: '/england/sheffield-wednesday/' },
+  { nome: 'Stoke City',           pagina: '/england/stoke-city/' },
+  { nome: 'Sunderland',           pagina: '/england/sunderland/' },
+  { nome: 'Swansea City',         pagina: '/england/swansea-city/' },
+  { nome: 'Watford',              pagina: '/england/watford/' },
+  { nome: 'West Brom',            pagina: '/england/west-bromwich-albion/' },
+  { nome: 'Wrexham',              pagina: '/england/wrexham/' },
 ]
 
-const ITALY = [
-  { nome: 'Juventus',           pagina: '/italy/juventus/' },
-  { nome: 'Inter Milan',        pagina: '/italy/inter/' },
-  { nome: 'AC Milan',           pagina: '/italy/milan/' },
-  { nome: 'Roma',               pagina: '/italy/roma/' },
-  { nome: 'Napoli',             pagina: '/italy/napoli/' },
-  { nome: 'Lazio',              pagina: '/italy/lazio/' },
+const LA_LIGA = [
+  { nome: 'Real Madrid',          pagina: '/spain/real-madrid/' },
+  { nome: 'Barcelona',            pagina: '/spain/barcelona/' },
+  { nome: 'Atletico Madrid',      pagina: '/spain/atletico-madrid/' },
+  { nome: 'Athletic Club',        pagina: '/spain/athletic-club/' },
+  { nome: 'Real Betis',           pagina: '/spain/real-betis/' },
+  { nome: 'Real Sociedad',        pagina: '/spain/real-sociedad/' },
+  { nome: 'Sevilla',              pagina: '/spain/sevilla/' },
+  { nome: 'Valencia',             pagina: '/spain/valencia/' },
+  { nome: 'Villarreal',           pagina: '/spain/villarreal/' },
+  { nome: 'Celta Vigo',           pagina: '/spain/celta/' },
+  { nome: 'Osasuna',              pagina: '/spain/osasuna/' },
+  { nome: 'Getafe',               pagina: '/spain/getafe/' },
+  { nome: 'Girona',               pagina: '/spain/girona/' },
+  { nome: 'Mallorca',             pagina: '/spain/mallorca/' },
+  { nome: 'Rayo Vallecano',       pagina: '/spain/rayo-vallecano/' },
+  { nome: 'Espanyol',             pagina: '/spain/espanyol/' },
+  { nome: 'Elche',                pagina: '/spain/elche/' },
+  { nome: 'Levante',              pagina: '/spain/levante/' },
+  { nome: 'Deportivo',            pagina: '/spain/deportivo/' },
+  { nome: 'Oviedo',               pagina: '/spain/oviedo/' },
 ]
 
-const GERMANY = [
-  { nome: 'Bayern Munich',         pagina: '/germany/bayern-munchen/' },
-  { nome: 'Borussia Dortmund',     pagina: '/germany/borussia-dortmund/' },
-  { nome: 'RB Leipzig',            pagina: '/germany/rb-leipzig/' },
-  { nome: 'Bayer Leverkusen',      pagina: '/germany/bayer-leverkusen/' },
-  { nome: 'Eintracht Frankfurt',   pagina: '/germany/eintracht-frankfurt/' },
+const BUNDESLIGA = [
+  { nome: 'Bayern Munich',          pagina: '/germany/bayern-munchen/' },
+  { nome: 'Borussia Dortmund',      pagina: '/germany/borussia-dortmund/' },
+  { nome: 'RB Leipzig',             pagina: '/germany/rb-leipzig/' },
+  { nome: 'Bayer Leverkusen',       pagina: '/germany/bayer-leverkusen/' },
+  { nome: 'Eintracht Frankfurt',    pagina: '/germany/eintracht-frankfurt/' },
+  { nome: 'Borussia Monchengladbach', pagina: '/germany/borussia-monchengladbach/' },
+  { nome: 'Stuttgart',              pagina: '/germany/vfb-stuttgart/' },
+  { nome: 'Wolfsburg',              pagina: '/germany/wolfsburg/' },
+  { nome: 'Hoffenheim',             pagina: '/germany/hoffenheim/' },
+  { nome: 'Freiburg',               pagina: '/germany/freiburg/' },
+  { nome: 'Werder Bremen',          pagina: '/germany/werder-bremen/' },
+  { nome: 'Union Berlin',           pagina: '/germany/union-berlin/' },
+  { nome: 'Augsburg',               pagina: '/germany/augsburg/' },
+  { nome: 'Mainz',                  pagina: '/germany/mainz-05/' },
+  { nome: 'Koln',                   pagina: '/germany/koln/' },
+  { nome: 'Heidenheim',             pagina: '/germany/fc-heidenheim/' },
+  { nome: 'St Pauli',               pagina: '/germany/st-pauli/' },
+  { nome: 'Hamburg',                pagina: '/germany/hamburger-sv/' },
 ]
 
-const FRANCE = [
-  { nome: 'PSG',                pagina: '/france/paris-saint-germain/' },
-  { nome: 'Monaco',             pagina: '/france/as-monaco/' },
-  { nome: 'Marseille',          pagina: '/france/marseille/' },
-  { nome: 'Lyon',               pagina: '/france/lyon/' },
-  { nome: 'Lille',              pagina: '/france/lille/' },
+const SERIE_A_IT = [
+  { nome: 'Juventus',             pagina: '/italy/juventus/' },
+  { nome: 'Inter Milan',          pagina: '/italy/inter/' },
+  { nome: 'AC Milan',             pagina: '/italy/milan/' },
+  { nome: 'Roma',                 pagina: '/italy/roma/' },
+  { nome: 'Napoli',               pagina: '/italy/napoli/' },
+  { nome: 'Lazio',                pagina: '/italy/lazio/' },
+  { nome: 'Atalanta',             pagina: '/italy/atalanta/' },
+  { nome: 'Fiorentina',           pagina: '/italy/fiorentina/' },
+  { nome: 'Torino',               pagina: '/italy/torino/' },
+  { nome: 'Udinese',              pagina: '/italy/udinese/' },
+  { nome: 'Bologna',              pagina: '/italy/bologna/' },
+  { nome: 'Genoa',                pagina: '/italy/genoa/' },
+  { nome: 'Verona',               pagina: '/italy/verona/' },
+  { nome: 'Cagliari',             pagina: '/italy/cagliari/' },
+  { nome: 'Lecce',                pagina: '/italy/lecce/' },
+  { nome: 'Parma',                pagina: '/italy/parma/' },
+  { nome: 'Sassuolo',             pagina: '/italy/sassuolo/' },
+  { nome: 'Como',                 pagina: '/italy/como-1907/' },
+  { nome: 'Cremonese',            pagina: '/italy/cremonese/' },
+  { nome: 'Pisa',                 pagina: '/italy/pisa/' },
 ]
 
-const PORTUGAL = [
-  { nome: 'Porto',              pagina: '/portugal/fc-porto/' },
-  { nome: 'Benfica',            pagina: '/portugal/benfica/' },
-  { nome: 'Sporting CP',        pagina: '/portugal/sporting-cp/' },
+const LIGUE_1 = [
+  { nome: 'PSG',                  pagina: '/france/paris-saint-germain/' },
+  { nome: 'Monaco',               pagina: '/france/as-monaco/' },
+  { nome: 'Marseille',            pagina: '/france/marseille/' },
+  { nome: 'Lyon',                 pagina: '/france/lyon/' },
+  { nome: 'Lille',                pagina: '/france/lille/' },
+  { nome: 'Rennes',               pagina: '/france/rennes/' },
+  { nome: 'Nice',                 pagina: '/france/nice/' },
+  { nome: 'Lens',                 pagina: '/france/rc-lens/' },
+  { nome: 'Strasbourg',           pagina: '/france/rc-strasbourg-alsace/' },
+  { nome: 'Nantes',               pagina: '/france/nantes/' },
+  { nome: 'Toulouse',             pagina: '/france/toulouse/' },
+  { nome: 'Brest',                pagina: '/france/brest/' },
+  { nome: 'Le Havre',             pagina: '/france/le-havre-ac/' },
+  { nome: 'Auxerre',              pagina: '/france/auxerre/' },
+  { nome: 'Angers',               pagina: '/france/angers/' },
+  { nome: 'Lorient',              pagina: '/france/lorient/' },
+  { nome: 'Metz',                 pagina: '/france/fc-metz/' },
+  { nome: 'Paris FC',             pagina: '/france/paris-fc/' },
 ]
 
-const NETHERLANDS = [
-  { nome: 'Ajax',               pagina: '/netherlands/ajax/' },
-  { nome: 'PSV',                pagina: '/netherlands/psv/' },
+const PRIMEIRA_LIGA = [
+  { nome: 'Porto',                pagina: '/portugal/fc-porto/' },
+  { nome: 'Benfica',              pagina: '/portugal/benfica/' },
+  { nome: 'Sporting CP',          pagina: '/portugal/sporting-cp/' },
+  { nome: 'Braga',                pagina: '/portugal/sc-braga/' },
+  { nome: 'Vitoria Guimaraes',    pagina: '/portugal/vitoria-de-guimaraes/' },
+  { nome: 'Rio Ave',              pagina: '/portugal/rio-ave/' },
+  { nome: 'Famalicao',            pagina: '/portugal/famalicao/' },
+  { nome: 'Gil Vicente',          pagina: '/portugal/gil-vicente/' },
+  { nome: 'Casa Pia',             pagina: '/portugal/casa-pia-ac/' },
+  { nome: 'Santa Clara',          pagina: '/portugal/santa-clara/' },
+  { nome: 'Estoril',              pagina: '/portugal/estoril/' },
+  { nome: 'Moreirense',           pagina: '/portugal/moreirense/' },
+  { nome: 'Arouca',               pagina: '/portugal/arouca/' },
+  { nome: 'Estrela Amadora',      pagina: '/portugal/estrela-da-amadora/' },
+  { nome: 'Nacional Madeira',     pagina: '/portugal/nacional-da-madeira/' },
+  { nome: 'Alverca',              pagina: '/portugal/alverca/' },
+  { nome: 'AVS',                  pagina: '/portugal/avs-futebol-sad/' },
+  { nome: 'Tondela',              pagina: '/portugal/tondela/' },
 ]
 
-// Copa Libertadores / Sul-americanos
+const EREDIVISIE = [
+  { nome: 'Ajax',                 pagina: '/netherlands/ajax/' },
+  { nome: 'PSV',                  pagina: '/netherlands/psv/' },
+  { nome: 'Feyenoord',            pagina: '/netherlands/feyenoord/' },
+  { nome: 'AZ Alkmaar',           pagina: '/netherlands/az-alkmaar/' },
+  { nome: 'Twente',               pagina: '/netherlands/twente/' },
+  { nome: 'Utrecht',              pagina: '/netherlands/fc-utrecht/' },
+  { nome: 'Heerenveen',           pagina: '/netherlands/sc-heerenveen/' },
+  { nome: 'Groningen',            pagina: '/netherlands/fc-groningen/' },
+  { nome: 'Sparta Rotterdam',     pagina: '/netherlands/sparta-rotterdam/' },
+  { nome: 'NAC Breda',            pagina: '/netherlands/nac-breda/' },
+  { nome: 'NEC',                  pagina: '/netherlands/nec-nijmegen/' },
+  { nome: 'Go Ahead Eagles',      pagina: '/netherlands/go-ahead-eagles/' },
+  { nome: 'Heracles',             pagina: '/netherlands/heracles-almelo/' },
+  { nome: 'PEC Zwolle',           pagina: '/netherlands/pec-zwolle/' },
+  { nome: 'Fortuna Sittard',      pagina: '/netherlands/fortuna-sittard/' },
+  { nome: 'Excelsior',            pagina: '/netherlands/excelsior-rotterdam/' },
+  { nome: 'Volendam',             pagina: '/netherlands/volendam/' },
+  { nome: 'Telstar',              pagina: '/netherlands/telstar/' },
+]
+
 const ARGENTINA = [
-  { nome: 'River Plate',        pagina: '/argentina/river-plate/' },
-  { nome: 'Boca Juniors',       pagina: '/argentina/boca-juniors/' },
-  { nome: 'Racing Club',        pagina: '/argentina/racing-club/' },
-  { nome: 'Independiente',      pagina: '/argentina/independiente/' },
+  { nome: 'River Plate',          pagina: '/argentina/river-plate/' },
+  { nome: 'Boca Juniors',         pagina: '/argentina/boca-juniors/' },
+  { nome: 'Racing Club',          pagina: '/argentina/racing-club/' },
+  { nome: 'Independiente',        pagina: '/argentina/independiente/' },
+  { nome: 'San Lorenzo',          pagina: '/argentina/san-lorenzo-de-almagro/' },
+  { nome: 'Estudiantes',          pagina: '/argentina/estudiantes-de-la-plata/' },
+  { nome: 'Newells',              pagina: '/argentina/newells-old-boys/' },
+  { nome: 'Rosario Central',      pagina: '/argentina/rosario-central/' },
+  { nome: 'Talleres',             pagina: '/argentina/talleres/' },
+  { nome: 'Velez',                pagina: '/argentina/velez-sarsfield/' },
+  { nome: 'Lanus',                pagina: '/argentina/lanus/' },
+  { nome: 'Huracan',              pagina: '/argentina/ca-huracan/' },
+  { nome: 'Belgrano',             pagina: '/argentina/belgrano/' },
+  { nome: 'Godoy Cruz',           pagina: '/argentina/godoy-cruz/' },
+  { nome: 'Defensa y Justicia',   pagina: '/argentina/defensa-y-justicia/' },
+  { nome: 'Atletico Tucuman',     pagina: '/argentina/atletico-tucuman/' },
+  { nome: 'Gimnasia La Plata',    pagina: '/argentina/gimnasia-lp/' },
+  { nome: 'Banfield',             pagina: '/argentina/banfield/' },
+  { nome: 'Union Santa Fe',       pagina: '/argentina/union/' },
+  { nome: 'Tigre',                pagina: '/argentina/tigre/' },
+  { nome: 'Platense',             pagina: '/argentina/platense/' },
+  { nome: 'Sarmiento',            pagina: '/argentina/sarmiento/' },
 ]
 
-const OUTROS_SA = [
-  { nome: 'Nacional',           pagina: '/uruguay/nacional/' },
-  { nome: 'Penarol',            pagina: '/uruguay/penarol/' },
-  { nome: 'Olimpia',            pagina: '/paraguay/olimpia/' },
-  { nome: 'LDU Quito',          pagina: '/ecuador/liga-de-quito/' },
-  { nome: 'Colo Colo',          pagina: '/chile/colo-colo/' },
+const URUGUAY = [
+  { nome: 'Penarol',              pagina: '/uruguay/penarol/' },
+  { nome: 'Nacional',             pagina: '/uruguay/nacional/' },
+  { nome: 'Defensor Sporting',    pagina: '/uruguay/defensor-sporting/' },
+  { nome: 'Danubio',              pagina: '/uruguay/danubio/' },
+  { nome: 'Liverpool Montevideo', pagina: '/uruguay/liverpool/' },
+  { nome: 'River Plate Uruguay',  pagina: '/uruguay/river-plate/' },
+  { nome: 'Montevideo City Torque', pagina: '/uruguay/montevideo-city-torque/' },
+  { nome: 'Boston River',         pagina: '/uruguay/boston-river/' },
+  { nome: 'Cerro',                pagina: '/uruguay/cerro/' },
+  { nome: 'Cerro Largo',          pagina: '/uruguay/cerro-largo/' },
+]
+
+const CHILE = [
+  { nome: 'Colo Colo',            pagina: '/chile/colo-colo/' },
   { nome: 'Universidad de Chile', pagina: '/chile/universidad-de-chile/' },
-  { nome: 'Alianza Lima',       pagina: '/peru/alianza-lima/' },
-  { nome: 'Universitario',      pagina: '/peru/universitario/' },
+  { nome: 'Universidad Catolica', pagina: '/chile/universidad-catolica/' },
+  { nome: 'Audax Italiano',       pagina: '/chile/audax-italiano/' },
+  { nome: 'Cobresal',             pagina: '/chile/cobresal/' },
+  { nome: 'Huachipato',           pagina: '/chile/huachipato/' },
+  { nome: 'Nublense',             pagina: '/chile/nublense/' },
+  { nome: 'Palestino',            pagina: '/chile/palestino/' },
+  { nome: 'Union Espanola',       pagina: '/chile/union-espanola/' },
+  { nome: 'Union La Calera',      pagina: '/chile/union-la-calera/' },
+  { nome: 'OHiggins',             pagina: '/chile/ohiggins/' },
+  { nome: 'Coquimbo Unido',       pagina: '/chile/coquimbo-unido/' },
+  { nome: 'Everton Chile',        pagina: '/chile/everton/' },
+]
+
+const PERU = [
+  { nome: 'Universitario',        pagina: '/peru/universitario/' },
+  { nome: 'Alianza Lima',         pagina: '/peru/alianza-lima/' },
+  { nome: 'Sporting Cristal',     pagina: '/peru/sporting-cristal/' },
+  { nome: 'Melgar',               pagina: '/peru/melgar/' },
+  { nome: 'Cusco FC',             pagina: '/peru/cusco/' },
+  { nome: 'Cienciano',            pagina: '/peru/cienciano-del-cusco/' },
+  { nome: 'Sport Huancayo',       pagina: '/peru/sport-huancayo/' },
+  { nome: 'Atletico Grau',        pagina: '/peru/atletico-grau/' },
+]
+
+const ECUADOR = [
+  { nome: 'LDU Quito',            pagina: '/ecuador/liga-de-quito/' },
+  { nome: 'Independiente del Valle', pagina: '/ecuador/independiente-del-valle/' },
+  { nome: 'Barcelona SC',         pagina: '/ecuador/barcelona-sc/' },
+  { nome: 'Emelec',               pagina: '/ecuador/emelec/' },
+  { nome: 'Aucas',                pagina: '/ecuador/aucas/' },
+  { nome: 'El Nacional',          pagina: '/ecuador/el-nacional/' },
+  { nome: 'Delfin',               pagina: '/ecuador/delfin/' },
+  { nome: 'Macara',               pagina: '/ecuador/macara/' },
+  { nome: 'Deportivo Cuenca',     pagina: '/ecuador/deportivo-cuenca/' },
+  { nome: 'Tecnico Universitario', pagina: '/ecuador/tecnico-universitario/' },
+]
+
+const PARAGUAY = [
+  { nome: 'Olimpia',              pagina: '/paraguay/olimpia/' },
+  { nome: 'Cerro Porteno',        pagina: '/paraguay/cerro-porteno/' },
+  { nome: 'Libertad',             pagina: '/paraguay/libertad/' },
+  { nome: 'Guarani Paraguay',     pagina: '/paraguay/guarani/' },
+  { nome: 'Nacional Paraguay',    pagina: '/paraguay/nacional/' },
+  { nome: 'Sportivo Luqueno',     pagina: '/paraguay/sportivo-luqueno/' },
+]
+
+const COLOMBIA = [
+  { nome: 'Atletico Nacional',    pagina: '/colombia/atletico-nacional/' },
+  { nome: 'Independiente Medellin', pagina: '/colombia/independiente-medellin/' },
+  { nome: 'America de Cali',      pagina: '/colombia/america-de-cali/' },
+  { nome: 'Deportes Tolima',      pagina: '/colombia/deportes-tolima/' },
+  { nome: 'Deportivo Cali',       pagina: '/colombia/deportivo-cali/' },
+  { nome: 'Millonarios',          pagina: '/colombia/millonarios/' },
+  { nome: 'Junior',               pagina: '/colombia/atletico-junior/' },
+  { nome: 'Santa Fe',             pagina: '/colombia/independiente-santa-fe/' },
+  { nome: 'Once Caldas',          pagina: '/colombia/once-caldas/' },
+  { nome: 'Deportivo Pereira',    pagina: '/colombia/deportivo-pereira/' },
+]
+
+const BOLIVIA = [
+  { nome: 'Bolivar',              pagina: '/bolivia/bolivar/' },
+  { nome: 'The Strongest',        pagina: '/bolivia/the-strongest/' },
+  { nome: 'Always Ready',         pagina: '/bolivia/always-ready/' },
+  { nome: 'Blooming',             pagina: '/bolivia/blooming/' },
+  { nome: 'Oriente Petrolero',    pagina: '/bolivia/oriente-petrolero/' },
+  { nome: 'Wilstermann',          pagina: '/bolivia/jorge-wilstermann/' },
+  { nome: 'Aurora',               pagina: '/bolivia/aurora/' },
+  { nome: 'Guabira',              pagina: '/bolivia/guabira/' },
 ]
 
 // Grupos para o resumo final
 const GRUPOS = [
-  { label: 'Serie A (BR)',   lista: SERIE_A },
-  { label: 'Serie B (BR)',   lista: SERIE_B },
-  { label: 'England',        lista: ENGLAND },
-  { label: 'Spain',          lista: SPAIN },
-  { label: 'Italy',          lista: ITALY },
-  { label: 'Germany',        lista: GERMANY },
-  { label: 'France',         lista: FRANCE },
-  { label: 'Portugal',       lista: PORTUGAL },
-  { label: 'Netherlands',    lista: NETHERLANDS },
-  { label: 'Argentina',      lista: ARGENTINA },
-  { label: 'Sul-americanos', lista: OUTROS_SA },
+  { label: 'Serie A (BR)',       lista: SERIE_A },
+  { label: 'Serie B (BR)',       lista: SERIE_B },
+  { label: 'Premier League',     lista: PREMIER_LEAGUE },
+  { label: 'Championship',       lista: CHAMPIONSHIP },
+  { label: 'La Liga',            lista: LA_LIGA },
+  { label: 'Bundesliga',         lista: BUNDESLIGA },
+  { label: 'Serie A (IT)',       lista: SERIE_A_IT },
+  { label: 'Ligue 1',            lista: LIGUE_1 },
+  { label: 'Primeira Liga',      lista: PRIMEIRA_LIGA },
+  { label: 'Eredivisie',         lista: EREDIVISIE },
+  { label: 'Argentina',          lista: ARGENTINA },
+  { label: 'Uruguay',            lista: URUGUAY },
+  { label: 'Chile',              lista: CHILE },
+  { label: 'Peru',               lista: PERU },
+  { label: 'Ecuador',            lista: ECUADOR },
+  { label: 'Paraguay',           lista: PARAGUAY },
+  { label: 'Colombia',           lista: COLOMBIA },
+  { label: 'Bolivia',            lista: BOLIVIA },
 ]
 
 const TODOS = GRUPOS.reduce(function(acc, g) { return acc.concat(g.lista) }, [])
@@ -224,7 +445,7 @@ async function main() {
     }))
     for (const r of resultados) {
       const status = r.url ? 'OK  ' : 'FAIL'
-      console.log('  [' + status + '] ' + r.nome.padEnd(24) + (r.url ? r.url.replace('https://assets.football-logos.cc/logos/', '') : '—'))
+      console.log('  [' + status + '] ' + r.nome.padEnd(26) + (r.url ? r.url.replace('https://assets.football-logos.cc/logos/', '') : '—'))
       if (r.url) {
         mapa[r.nome] = r.url
         if (!destaqueURL) { destaqueURL = r.url; destaqueNome = r.nome }
@@ -273,7 +494,7 @@ async function main() {
   console.log('\nResumo por grupo:')
   for (const g of GRUPOS) {
     const n = g.lista.filter(function(t) { return mapa[t.nome] }).length
-    console.log('  ' + g.label.padEnd(18) + n + '/' + g.lista.length)
+    console.log('  ' + g.label.padEnd(20) + n + '/' + g.lista.length)
   }
 }
 
