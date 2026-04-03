@@ -177,10 +177,13 @@ function listaJogos(jogos) {
 
 // ─── TEXTOS POR FORMATO ───
 
-async function gerarTextoFormato1(jogos, h2hData) {
+async function gerarTextoFormato1(jogos, h2hData, turno) {
+  const turnoLabel = turno === 'tarde' ? 'tarde' : 'manha'
   const resposta = await chamarClaude(
     'Voce e um especialista em estatistica de futebol. NUNCA mencione apostas, odds, palpites ou ganho financeiro.\n\n' +
     'Jogos:\n' + listaJogos(jogos) + formatarH2H(h2hData) + '\n\n' +
+    'Este e o post do turno ' + turnoLabel + '. Gere uma curiosidade COMPLETAMENTE DIFERENTE de qualquer outra que voce ja gerou hoje. ' +
+    'Varie o tema: historia do futebol, recordes, curiosidades de jogadores, regras inusitadas, estadios, Copas do Mundo, etc.\n\n' +
     'Escolha o confronto mais interessante. Retorne EXATAMENTE neste formato:\n' +
     'CURIOSIDADE: [fato historico real e impactante sobre estes times, maximo 12 palavras]\n' +
     'CONFRONTO: [Time Casa x Time Fora - DD/MM]\n' +
@@ -1039,7 +1042,7 @@ async function postarConteudoEducativo(jogos, h2hData, turno) {
     let feedPath, storyPath, texto
 
     if (formato === 1) {
-      const d = await gerarTextoFormato1(jogosOrdenados, h2hData)
+      const d = await gerarTextoFormato1(jogosOrdenados, h2hData, turno)
       if (!d.curiosidade) return
       const img = await buscarImagemUnsplash(d.query)
       feedPath = await gerarFeed_Formato1(d.curiosidade, d.confronto, img)
