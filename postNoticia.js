@@ -121,43 +121,23 @@ async function buscarNoticiaRSS() {
 
 // ─── IMAGEM ───────────────────────────────────────────────────────────────────
 
-function extrairPalavrasChave(titulo) {
-  // Remove pontuação e palavras genéricas, mantém nomes próprios e termos relevantes
-  const stopwords = new Set([
-    'a','o','as','os','e','de','do','da','dos','das','em','no','na','nos','nas',
-    'por','para','com','se','que','um','uma','ao','à','pelo','pela','após','ante',
-    'mas','ou','nem','vai','vai','ser','está','são','foi','com','não','mais','já',
-    'sobre','contra','após','seus','sua','seu','quer','ser','isso','este','esse'
-  ])
-  const palavras = titulo
-    .replace(/["""''():;!?]/g, ' ')
-    .split(/\s+/)
-    .filter(p => p.length > 2 && !stopwords.has(p.toLowerCase()))
-    .slice(0, 5)
-  return palavras.join(' ') || titulo.slice(0, 40)
-}
-
-async function buscarImagemGoogle(query) {
+async function buscarOgImage(url) {
+  if (!url) return null
   try {
-    const keywords = extrairPalavrasChave(query)
-    const q = encodeURIComponent(keywords + ' futebol')
-    const res = await axios.get('https://www.google.com/search?q=' + q + '&tbm=isch&hl=pt-BR', {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120',
-        'Accept-Language': 'pt-BR,pt;q=0.9'
-      },
+    console.log('[IMG] og:image — buscando em: ' + url.slice(0, 100))
+    const res = await axios.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120' },
       timeout: 10000
     })
-    // Extrai URLs de imagem do HTML do Google Images
-    const matches = res.data.match(/"(https:\/\/[^"]+\.(?:jpg|jpeg|png|webp))"/g)
-    if (matches && matches.length) {
-      const url = matches[0].replace(/"/g, '')
-      // Verifica se a URL carrega
-      const img = await loadImage(url)
-      return url
+    const match = res.data.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+               || res.data.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+    if (match) {
+      console.log('[IMG] og:image — encontrado: ' + match[1].slice(0, 100))
+      return match[1]
     }
+    console.log('[IMG] og:image — nenhuma meta tag encontrada')
   } catch (e) {
-    console.log('Google Images falhou: ' + e.message)
+    console.log('[IMG] og:image falhou: ' + e.message)
   }
   return null
 }
@@ -169,22 +149,36 @@ async function buscarImagemUnsplash(query) {
       params: { query: query, orientation: 'squarish', content_filter: 'high' },
       timeout: 8000
     })
+    console.log('[IMG] Unsplash — OK: ' + res.data.urls.regular.slice(0, 80))
     return res.data.urls.regular
   } catch (e) {
-    console.log('Unsplash falhou: ' + e.message)
+    console.log('[IMG] Unsplash falhou: ' + e.message)
     return null
   }
 }
 
 async function resolverImagem(noticia) {
+  console.log('[IMG] imgUrl do RSS: ' + (noticia.imgUrl || '(vazio)'))
   if (noticia.imgUrl) {
     try {
-      await loadImage(noticia.imgUrl)
+      const img = await loadImage(noticia.imgUrl)
+      console.log('[IMG] RSS imgUrl carregada com sucesso (' + img.width + 'x' + img.height + ') — usando esta')
       return noticia.imgUrl
-    } catch (e) {}
+    } catch (e) {
+      console.log('[IMG] RSS imgUrl falhou ao carregar: ' + e.message + ' — buscando alternativa')
+    }
   }
-  const urlGoogle = await buscarImagemGoogle(noticia.titulo)
-  if (urlGoogle) return urlGoogle
+  const urlOg = await buscarOgImage(noticia.link)
+  if (urlOg) {
+    try {
+      const img = await loadImage(urlOg)
+      console.log('[IMG] og:image carregada com sucesso (' + img.width + 'x' + img.height + ') — usando esta')
+      return urlOg
+    } catch (e) {
+      console.log('[IMG] og:image falhou ao carregar: ' + e.message)
+    }
+  }
+  console.log('[IMG] og:image falhou — tentando Unsplash')
   const urlUnsplash = await buscarImagemUnsplash('football soccer stadium')
   return urlUnsplash
 }
@@ -587,4 +581,4 @@ async function postarNoticia() {
   console.log('[' + new Date().toISOString() + '] Post de noticia finalizado')
 }
 
-module.exports = { postarNoticia }
+module.exports = { postarNoticia, gerarCardNoticia, gerarCardNoticiaStory }
