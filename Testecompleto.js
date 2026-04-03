@@ -12,6 +12,7 @@ const apostas = [{
   jogo: 'Flamengo x Palmeiras',
   mercado: 'Mais de 2.5 gols',
   odd: 1.85,
+  edge: 0.05,
   dataJogo: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 }]
 
