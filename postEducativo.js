@@ -958,6 +958,10 @@ async function gerarStory_Formato4(timeCasa, timeFora, metricas) {
 // ─── PUBLICAÇÃO VIA ZERNIO ───
 
 async function publicarViaZernio(caption, imageUrl) {
+  if (process.env.TEST_MODE === 'true') {
+    console.log('[TEST MODE] Publicação bloqueada (feed)')
+    return true
+  }
   try {
     await axios.post('https://zernio.com/api/v1/posts', {
       platforms: [{ platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }],
@@ -979,6 +983,10 @@ async function publicarViaZernio(caption, imageUrl) {
 }
 
 async function publicarStoryViaZernio(imageUrl) {
+  if (process.env.TEST_MODE === 'true') {
+    console.log('[TEST MODE] Publicação bloqueada (story)')
+    return true
+  }
   try {
     await axios.post('https://zernio.com/api/v1/posts', {
       platforms: [{

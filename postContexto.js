@@ -258,6 +258,10 @@ async function gerarImagemContexto(jogo) {
 }
 
 async function publicarViaZernio(caption, imageUrl) {
+  if (process.env.TEST_MODE === 'true') {
+    console.log('[TEST MODE] Publicação bloqueada (feed)')
+    return true
+  }
   try {
     await axios.post('https://zernio.com/api/v1/posts', {
       platforms: [{ platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }],

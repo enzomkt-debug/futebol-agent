@@ -72,6 +72,10 @@ Acompanha o historico completo. Link na bio.
 }
 
 async function publicarViaZernio(caption, imageUrl) {
+  if (process.env.TEST_MODE === 'true') {
+    console.log('[TEST MODE] Publicação bloqueada (feed)')
+    return true
+  }
   try {
     console.log('Publicando no Instagram via Zernio...')
 
@@ -97,6 +101,10 @@ async function publicarViaZernio(caption, imageUrl) {
 }
 
 async function publicarStoryViaZernio(imageUrl) {
+  if (process.env.TEST_MODE === 'true') {
+    console.log('[TEST MODE] Publicação bloqueada (story)')
+    return true
+  }
   try {
     console.log('Publicando Story no Instagram via Zernio...')
 

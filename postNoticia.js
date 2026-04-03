@@ -505,10 +505,14 @@ async function gerarCardNoticiaStory(noticia, imgUrl) {
 // ─── ZERNIO ───────────────────────────────────────────────────────────────────
 
 async function publicarViaZernio(caption, imageUrl, isStory) {
+  const tipo = isStory ? 'story' : 'feed'
+  if (process.env.TEST_MODE === 'true') {
+    console.log('[TEST MODE] Publicação bloqueada (' + tipo + ')')
+    return true
+  }
   const plataforma = isStory
     ? { platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID, platformSpecificData: { contentType: 'story' } }
     : { platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }
-  const tipo = isStory ? 'story' : 'feed'
   try {
     await axios.post('https://zernio.com/api/v1/posts', {
       platforms: [plataforma],
