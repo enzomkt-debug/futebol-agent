@@ -373,8 +373,8 @@ async function monitorarResultados() {
     await enviarTelegram(mensagem)
     await salvarResultadosSupabase([aposta], [resultado])
 
-    // CORREÇÃO: o monitor NÃO posta no Instagram — isso é responsabilidade do runAgent('manha')
-    // Postar aqui causaria múltiplas publicações por dia
+    // Publica card de resultado no Instagram assim que o jogo finalizar
+    await postarInstagram([aposta], [resultado], 'manha')
 
     console.log('Resultado notificado: ' + aposta.jogo + ' (' + placar + ') — ' + status)
   }
