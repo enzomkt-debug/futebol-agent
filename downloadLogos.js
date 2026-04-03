@@ -2,10 +2,13 @@ require('dotenv').config()
 const axios = require('axios')
 const fs = require('fs')
 const path = require('path')
+const { createCanvas, loadImage } = require('canvas')
 const LOGOS = require('./logosMapa')
 
 const DIR = path.join(__dirname, 'assets', 'logos')
 if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true })
+
+const TAMANHO = 128
 
 function nomeArquivo(chave) {
   return chave
@@ -16,10 +19,9 @@ function nomeArquivo(chave) {
 }
 
 async function baixar(chave, url) {
-  const url64 = url
   const destino = path.join(DIR, nomeArquivo(chave))
   try {
-    const res = await axios.get(url64, {
+    const res = await axios.get(url, {
       responseType: 'arraybuffer',
       timeout: 10000,
       headers: {
@@ -28,7 +30,15 @@ async function baixar(chave, url) {
         'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8'
       }
     })
-    fs.writeFileSync(destino, res.data)
+    const img = await loadImage(Buffer.from(res.data))
+    const scale = Math.min(TAMANHO / img.width, TAMANHO / img.height)
+    const lw = Math.round(img.width * scale)
+    const lh = Math.round(img.height * scale)
+    const canvas = createCanvas(TAMANHO, TAMANHO)
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, TAMANHO, TAMANHO)
+    ctx.drawImage(img, (TAMANHO - lw) / 2, (TAMANHO - lh) / 2, lw, lh)
+    fs.writeFileSync(destino, canvas.toBuffer('image/png'))
     return true
   } catch (e) {
     console.error('  FALHOU ' + chave + ': ' + e.message)
