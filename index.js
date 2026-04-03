@@ -284,6 +284,25 @@ async function salvarNotificado(chave) {
   }
 }
 
+async function jaPostadoInstagram(matchId, dataJogo) {
+  try {
+    const chave = 'ig_' + dataJogo + '_' + matchId
+    const { data } = await supabase.from('notificados').select('match_id').eq('match_id', chave).limit(1)
+    return !!(data && data.length)
+  } catch (err) {
+    return false
+  }
+}
+
+async function marcarPostadoInstagram(matchId, dataJogo) {
+  try {
+    const chave = 'ig_' + dataJogo + '_' + matchId
+    await supabase.from('notificados').insert({ match_id: chave })
+  } catch (err) {
+    console.error('Erro ao marcar postado Instagram:', err.message)
+  }
+}
+
 // ─── RESULTADO DE PARTIDA ───
 
 async function buscarResultadoPartida(matchId) {
@@ -374,7 +393,13 @@ async function monitorarResultados() {
     await salvarResultadosSupabase([aposta], [resultado])
 
     // Publica card de resultado no Instagram assim que o jogo finalizar
-    await postarInstagram([aposta], [resultado], 'manha')
+    const igJaPostado = await jaPostadoInstagram(aposta.matchId, hoje)
+    if (!igJaPostado) {
+      await postarInstagram([aposta], [resultado], 'manha')
+      await marcarPostadoInstagram(aposta.matchId, hoje)
+    } else {
+      console.log('Instagram já postado para ' + aposta.jogo + ' — pulando')
+    }
 
     console.log('Resultado notificado: ' + aposta.jogo + ' (' + placar + ') — ' + status)
   }
@@ -880,8 +905,18 @@ async function runAgent(turno) {
     }
 
     // 6. Posta no Instagram com dados de ontem (turno manhã)
-    if (turno === 'manha') {
-      await postarInstagram(apostasOntemParaInstagram, resultadosReaisParaInstagram, turno)
+    // Verifica se o monitor já postou para evitar duplicata
+    if (turno === 'manha' && apostasOntemParaInstagram && apostasOntemParaInstagram.length) {
+      const ontem = new Date()
+      ontem.setDate(ontem.getDate() - 1)
+      const dataOntem = ontem.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+      const igJaPostado = await jaPostadoInstagram(apostasOntemParaInstagram[0].matchId, dataOntem)
+      if (!igJaPostado) {
+        await postarInstagram(apostasOntemParaInstagram, resultadosReaisParaInstagram, turno)
+        await marcarPostadoInstagram(apostasOntemParaInstagram[0].matchId, dataOntem)
+      } else {
+        console.log('Instagram já postado pelo monitor — pulando publicação no runAgent')
+      }
     }
 
   } catch (err) {
