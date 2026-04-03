@@ -5,6 +5,19 @@ const { verificarAcerto } = require('./utils')
 
 const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
 const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
+const ALERTA_CHAT_ID = '6116204841'
+
+async function enviarAlerta(mensagem) {
+  try {
+    await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', {
+      chat_id: ALERTA_CHAT_ID,
+      text: mensagem,
+      parse_mode: 'HTML'
+    })
+  } catch (e) {
+    console.error('Erro ao enviar alerta Telegram:', e.message)
+  }
+}
 
 function gerarCaption(apostasOntem, resultados) {
   const hoje = new Date().toLocaleDateString('pt-BR')
@@ -96,6 +109,7 @@ async function publicarViaZernio(caption, imageUrl) {
 
   } catch (err) {
     console.error('Erro ao publicar via Zernio:', err.response?.data || err.message)
+    await enviarAlerta('🔴 <b>Instagram (feed) — Erro Zernio</b>\n' + (err.response?.data?.message || err.message))
     return false
   }
 }
@@ -129,6 +143,7 @@ async function publicarStoryViaZernio(imageUrl) {
 
   } catch (err) {
     console.error('Erro ao publicar story:', err.response?.data || err.message)
+    await enviarAlerta('🔴 <b>Instagram (story) — Erro Zernio</b>\n' + (err.response?.data?.message || err.message))
     return false
   }
 }

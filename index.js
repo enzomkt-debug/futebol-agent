@@ -322,30 +322,26 @@ async function buscarResultadoPartida(matchId) {
   }
 }
 
-// ─── GERAÇÃO DE RESULTADO DE ONTEM (usa Supabase, não arquivo local) ───
+// ─── GERAÇÃO DE RESULTADO DE ONTEM (usa dados já buscados, sem chamadas API extras) ───
 
-async function gerarResultadoOntem() {
-  // CORREÇÃO: carrega apostas de ontem do Supabase, não do arquivo local
-  const apostasOntem = await carregarApostasOntemSupabase()
-  if (!apostasOntem || !apostasOntem.length) return 'Primeiro dia de operacao!'
-
-  const destaque = apostasOntem[0]
-  const resultado = await buscarResultadoPartida(destaque.matchId)
+// Versão síncrona que reutiliza apostas e resultados já buscados pelo runAgent
+function gerarTextoResultado(apostas, resultados) {
+  if (!apostas || !apostas.length) return 'Primeiro dia de operacao!'
+  const destaque = apostas[0]
+  const resultado = resultados[0]
   if (!resultado) return destaque.jogo + '\nResultado ainda nao disponivel'
 
   const acertou = verificarAcerto(destaque, resultado)
   const placar = resultado.golsCasa + ' x ' + resultado.golsFora
   const status = acertou ? 'VERDE ✅' : 'VERMELHO ❌'
 
-  // Busca os demais resultados
   let acertos = acertou ? 1 : 0
   let total = 1
-
-  for (let i = 1; i < apostasOntem.length; i++) {
-    const res = await buscarResultadoPartida(apostasOntem[i].matchId)
+  for (let i = 1; i < apostas.length; i++) {
+    const res = resultados[i]
     if (!res) continue
     total++
-    if (verificarAcerto(apostasOntem[i], res)) acertos++
+    if (verificarAcerto(apostas[i], res)) acertos++
   }
 
   let resumo = destaque.jogo + ' (' + placar + ')\n'
@@ -483,7 +479,7 @@ async function buscarJogosProximosDias() {
 }
 
 async function buscarJogosHoje() {
-  const hoje = new Date().toISOString().split('T')[0]
+  const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   try {
     const data = await apiFootball('/matches', { dateFrom: hoje, dateTo: hoje })
     const matches = data.matches || []
@@ -849,8 +845,8 @@ async function runAgent(turno) {
         await salvarResultadosSupabase(apostasOntemParaInstagram, resultadosReaisParaInstagram)
       }
 
-      // 3. Gera texto do resultado para incluir na mensagem Telegram
-      resultadoOntem = await gerarResultadoOntem()
+      // 3. Gera texto do resultado usando dados já buscados (sem chamadas API extras)
+      resultadoOntem = gerarTextoResultado(apostasOntemParaInstagram, resultadosReaisParaInstagram)
       console.log('Resultado ontem: ' + resultadoOntem)
     }
 
@@ -858,8 +854,8 @@ async function runAgent(turno) {
     let jogos = []
     if (turno === 'manha') {
       const todosJogos = await buscarJogosProximosDias()
-      const hoje = new Date().toISOString().split('T')[0]
-      const amanha = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+      const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+      const amanha = new Date(Date.now() + 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
       jogos = todosJogos.filter(function(j) {
         return j.dataJogo === hoje || j.dataJogo === amanha
       })
@@ -937,12 +933,15 @@ async function runAgent(turno) {
     await enviarTelegram(mensagem)
 
     if (turno === 'manha') {
-      const panorama = gerarMensagemPanorama(
+      let panorama = gerarMensagemPanorama(
         todasApostas,
         jogosComBaixoEdge.slice(1),
         jogosComBaixoEdge.slice(0, 1),
         jogosFiltrados
       )
+      if (panorama.length > 4000) {
+        panorama = panorama.slice(0, 4000) + '\n... (lista completa no grupo)'
+      }
       await enviarTelegram(panorama)
     }
 

@@ -9,6 +9,19 @@ const LOGOS = require('./logosMapa')
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
 const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
+const ALERTA_CHAT_ID = '6116204841'
+
+async function enviarAlerta(mensagem) {
+  try {
+    await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', {
+      chat_id: ALERTA_CHAT_ID,
+      text: mensagem,
+      parse_mode: 'HTML'
+    })
+  } catch (e) {
+    console.error('Erro ao enviar alerta Telegram:', e.message)
+  }
+}
 
 try {
   registerFont(path.join(__dirname, 'fonts', 'DejaVuSans.ttf'), { family: 'DejaVu Sans', weight: 'normal' })
@@ -278,6 +291,7 @@ async function publicarViaZernio(caption, imageUrl) {
     return true
   } catch (err) {
     console.error('Erro ao publicar contexto:', err.response?.data || err.message)
+    await enviarAlerta('🔴 <b>postContexto — Erro Zernio</b>\n' + (err.response?.data?.message || err.message))
     return false
   }
 }

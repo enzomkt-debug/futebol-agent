@@ -10,6 +10,19 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
 const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY
+const ALERTA_CHAT_ID = '6116204841'
+
+async function enviarAlerta(mensagem) {
+  try {
+    await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_TOKEN + '/sendMessage', {
+      chat_id: ALERTA_CHAT_ID,
+      text: mensagem,
+      parse_mode: 'HTML'
+    })
+  } catch (e) {
+    console.error('Erro ao enviar alerta Telegram:', e.message)
+  }
+}
 
 try {
   registerFont(path.join(__dirname, 'fonts', 'DejaVuSans.ttf'), { family: 'DejaVu Sans', weight: 'normal' })
@@ -136,18 +149,26 @@ function formatarH2H(h2hData) {
 }
 
 async function chamarClaude(prompt) {
-  const res = await axios.post('https://api.anthropic.com/v1/messages', {
-    model: 'claude-sonnet-4-6',
-    max_tokens: 500,
-    messages: [{ role: 'user', content: prompt }]
-  }, {
-    headers: {
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json'
-    }
-  })
-  return res.data.content[0].text.trim()
+  try {
+    const res = await axios.post('https://api.anthropic.com/v1/messages', {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 500,
+      messages: [{ role: 'user', content: prompt }]
+    }, {
+      headers: {
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      timeout: 30000
+    })
+    return res.data.content[0].text.trim()
+  } catch (e) {
+    const status = e.response?.status
+    console.error('Claude API falhou (' + (status || e.message) + ')')
+    await enviarAlerta('🔴 <b>postEducativo — Claude API falhou</b>\n' + (status ? 'HTTP ' + status : e.message))
+    return ''
+  }
 }
 
 function extrairCampo(texto, campo) {
