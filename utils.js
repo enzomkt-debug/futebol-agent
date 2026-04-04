@@ -2,12 +2,14 @@
 // Centraliza funções usadas em múltiplos módulos
 
 function verificarAcerto(aposta, resultado) {
+  if (!resultado || resultado.golsCasa == null || resultado.golsFora == null) return null
   const totalGols = resultado.golsCasa + resultado.golsFora
   const ambasMarcaram = resultado.golsCasa > 0 && resultado.golsFora > 0
   if (aposta.mercado === 'Mais de 2.5 gols') return totalGols > 2
   if (aposta.mercado === 'Menos de 2.5 gols') return totalGols < 3
   if (aposta.mercado === 'Ambas marcam: SIM') return ambasMarcaram
-  return false
+  console.warn('[verificarAcerto] Mercado desconhecido:', aposta.mercado)
+  return null
 }
 
 // Sobe um arquivo PNG para o GitHub com [skip ci] para não triggar redeploy no Railway
