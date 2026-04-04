@@ -173,12 +173,7 @@ async function salvarResultadosSupabase(apostasOntem, resultados) {
 
       if (!data || !data.length) continue
 
-      const totalGols = resultado.golsCasa + resultado.golsFora
-      const ambasMarcaram = resultado.golsCasa > 0 && resultado.golsFora > 0
-      let acertou = false
-      if (aposta.mercado === 'Mais de 2.5 gols') acertou = totalGols > 2
-      else if (aposta.mercado === 'Menos de 2.5 gols') acertou = totalGols < 3
-      else if (aposta.mercado === 'Ambas marcam: SIM') acertou = ambasMarcaram
+      const acertou = verificarAcerto(aposta, resultado)
 
       // Evita inserir resultado duplicado para a mesma aposta
       const { data: existente } = await supabase
@@ -221,8 +216,10 @@ async function buscarPerformance() {
 
     for (const aposta of data) {
       if (!aposta.resultados || !aposta.resultados.length) continue
+      const acertou = aposta.resultados[0].acertou
+      if (acertou === null) continue  // resultado pendente / mercado desconhecido — não contabiliza
       total++
-      if (aposta.resultados[0].acertou) {
+      if (acertou === true) {
         acertos++
         roi += aposta.odd - 1
       } else {
@@ -513,17 +510,17 @@ async function monitorarResultados() {
       'Acompanhe o historico completo no grupo.'
     ].join('\n')
 
-    // Salva como notificado ANTES de enviar para evitar duplicatas em caso de falha parcial
-    await salvarNotificado(chave)
-
-    // Telegram e Supabase: notifica TODAS as apostas
-    await enviarTelegram(mensagem)
-
+    // Salva resultado no Supabase PRIMEIRO — só marca como notificado após sucesso
+    // (evita perda de dados: se Supabase falhar, próximo tick re-tenta)
     try {
       await salvarResultadosSupabase([aposta], [resultado])
     } catch (err) {
       await enviarAlerta('🔴 <b>Monitor — Erro Supabase</b>\nFalha ao salvar resultado de ' + aposta.jogo + '\n' + err.message)
+      continue  // não marca como notificado — próximo tick tenta novamente
     }
+
+    await salvarNotificado(chave)
+    await enviarTelegram(mensagem)
 
     // Instagram: posta APENAS quando a aposta principal terminar
     const ehPrincipal = aposta.matchId === apostaPrincipal.matchId
@@ -660,30 +657,41 @@ async function buscarH2H(matchId) {
 
 async function buscarStats(timeCasaId, timeForaId, matchId) {
   try {
-    const resCasa = await apiFootball('/teams/' + timeCasaId + '/matches', { status: 'FINISHED', limit: 8 })
-    const resFora = await apiFootball('/teams/' + timeForaId + '/matches', { status: 'FINISHED', limit: 8 })
+    const resCasa = await apiFootball('/teams/' + timeCasaId + '/matches', { status: 'FINISHED', limit: 10 })
+    const resFora = await apiFootball('/teams/' + timeForaId + '/matches', { status: 'FINISHED', limit: 10 })
     const h2h = await buscarH2H(matchId)
 
-    const calcular = function(matches) {
-      const finalizados = (matches || []).filter(m => m.status === 'FINISHED').slice(0, 6)
-      if (!finalizados.length) return { mediaGols: 1.5, btts: 0.5 }
-      let totalGols = 0
-      let bttsCount = 0
-      for (const m of finalizados) {
-        const gc = m.score.fullTime.home ?? 0
-        const gf = m.score.fullTime.away ?? 0
-        totalGols += gc + gf
-        if (gc > 0 && gf > 0) bttsCount++
-      }
+    // Calcula stats separando jogos em casa e fora, com peso exponencial (jogos recentes valem mais)
+    const calcularAtaque = function(matches, teamId, comoMandante) {
+      const finalizados = (matches || [])
+        .filter(m => m.status === 'FINISHED')
+        .filter(m => comoMandante ? m.homeTeam.id === teamId : m.awayTeam.id === teamId)
+        .slice(0, 6)
+      if (!finalizados.length) return { mediaGolsMarcados: 1.2, mediaGolsSofridos: 1.2 }
+      let totalMarcados = 0
+      let totalSofridos = 0
+      let pesoTotal = 0
+      finalizados.forEach(function(m, i) {
+        const peso = Math.pow(0.85, i) // jogo mais recente vale mais
+        const marcados = comoMandante ? (m.score.fullTime.home ?? 0) : (m.score.fullTime.away ?? 0)
+        const sofridos  = comoMandante ? (m.score.fullTime.away ?? 0) : (m.score.fullTime.home ?? 0)
+        totalMarcados += marcados * peso
+        totalSofridos += sofridos * peso
+        pesoTotal += peso
+      })
       return {
-        mediaGols: totalGols / finalizados.length,
-        btts: bttsCount / finalizados.length
+        mediaGolsMarcados: totalMarcados / pesoTotal,
+        mediaGolsSofridos: totalSofridos / pesoTotal
       }
     }
 
+    // Time da casa jogando em casa, time de fora jogando fora
+    const statsCasa = calcularAtaque(resCasa.matches, timeCasaId, true)
+    const statsFora = calcularAtaque(resFora.matches, timeForaId, false)
+
     return {
-      casa: calcular(resCasa.matches),
-      fora: calcular(resFora.matches),
+      casa: statsCasa,
+      fora: statsFora,
       h2h
     }
   } catch (err) {
@@ -702,40 +710,36 @@ function estimarOddsOver(mediaGols) {
   return { over: 2.50, under: 1.55 }
 }
 
-function estimarOddsBTTS(probBTTS) {
-  if (probBTTS >= 0.65) return 1.60
-  if (probBTTS >= 0.55) return 1.75
-  if (probBTTS >= 0.45) return 2.00
-  return 2.20
+
+// Poisson: probabilidade de exatamente k gols com média lambda
+function poissonProb(lambda, k) {
+  let p = Math.exp(-lambda)
+  for (let i = 0; i < k; i++) p *= lambda / (i + 1)
+  return p
 }
 
 function calcularEdge(stats) {
-  const mediaRecente = (stats.casa.mediaGols + stats.fora.mediaGols) / 2
-  const mediaPonderada = mediaRecente * 0.6 + stats.h2h.mediaGols * 0.4
+  // Dixon-Coles: lambda separado para cada time
+  // lambdaCasa = ataque do time da casa × defesa do time de fora
+  // lambdaFora = ataque do time de fora × defesa do time da casa
+  const lambdaCasa = stats.casa.mediaGolsMarcados * stats.fora.mediaGolsSofridos
+  const lambdaFora = stats.fora.mediaGolsMarcados * stats.casa.mediaGolsSofridos
 
-  const lambda = mediaPonderada
-  const p0 = Math.exp(-lambda)
-  const p1 = p0 * lambda
-  const p2 = p1 * lambda / 2
-  const probUnder25 = p0 + p1 + p2
+  // Pondera com H2H (30%) para suavizar
+  const lambdaTotal = (lambdaCasa + lambdaFora) * 0.7 + stats.h2h.mediaGols * 0.3
+
+  // Probabilidades over/under 2.5 via Poisson
+  const probUnder25 = poissonProb(lambdaTotal, 0) + poissonProb(lambdaTotal, 1) + poissonProb(lambdaTotal, 2)
   const probOver25 = 1 - probUnder25
 
-  const bttsForma = (stats.casa.btts + stats.fora.btts) / 2
-  const probBTTS = bttsForma * 0.6 + stats.h2h.btts * 0.4
-
-  const oddsOver = estimarOddsOver(mediaPonderada)
-  const oddBTTS = estimarOddsBTTS(probBTTS)
-
+  const oddsOver = estimarOddsOver(lambdaTotal)
   const bets = []
 
   const edgeOver = probOver25 - (1 / oddsOver.over)
-  if (edgeOver >= 0.05) bets.push({ mercado: 'Mais de 2.5 gols', odd: oddsOver.over, edge: edgeOver, prob: probOver25 })
+  if (edgeOver >= 0.08) bets.push({ mercado: 'Mais de 2.5 gols', odd: oddsOver.over, edge: edgeOver, prob: probOver25 })
 
   const edgeUnder = probUnder25 - (1 / oddsOver.under)
-  if (edgeUnder >= 0.05) bets.push({ mercado: 'Menos de 2.5 gols', odd: oddsOver.under, edge: edgeUnder, prob: probUnder25 })
-
-  const edgeBTTS = probBTTS - (1 / oddBTTS)
-  if (edgeBTTS >= 0.05) bets.push({ mercado: 'Ambas marcam: SIM', odd: oddBTTS, edge: edgeBTTS, prob: probBTTS })
+  if (edgeUnder >= 0.08) bets.push({ mercado: 'Menos de 2.5 gols', odd: oddsOver.under, edge: edgeUnder, prob: probUnder25 })
 
   return bets
 }
