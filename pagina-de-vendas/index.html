@@ -1248,12 +1248,10 @@
       });
     });
 
-    // Contador regressivo até meia-noite, reinicia todo dia
+    // Contador regressivo de 13 minutos, reinicia automaticamente
+    var CUPOM_DURATION = 13 * 60 * 1000; // 13 minutos em ms
     function updateCupomTimer() {
-      var now = new Date();
-      var midnight = new Date(now);
-      midnight.setHours(24, 0, 0, 0);
-      var diff = midnight - now; // ms restantes
+      var diff = CUPOM_DURATION - (Date.now() % CUPOM_DURATION);
 
       var totalSec = Math.floor(diff / 1000);
       var mins = Math.floor(totalSec / 60);
