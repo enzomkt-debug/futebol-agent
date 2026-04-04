@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Termos de Uso — Gol Match BR</title>
+  <meta name="description" content="Termos de Uso do Gol Match BR. Leia as condições de uso do serviço de análise estatística de futebol via Telegram." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://golmatchbr.com.br/termos-de-uso.html" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --verde: #00c48c;
+      --verde-escuro: #00956a;
+      --fundo: #080f0a;
+      --fundo2: #0d1a10;
+      --card: #111d14;
+      --borda: rgba(0,196,140,0.15);
+      --texto: #e8f0ea;
+      --texto2: #7a9a80;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--fundo);
+      color: var(--texto);
+      font-family: 'DM Sans', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* HEADER */
+    .site-header {
+      border-bottom: 1px solid var(--borda);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: rgba(8,15,10,0.95);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+    }
+
+    .header-logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 24px;
+      color: var(--verde);
+      text-decoration: none;
+    }
+
+    .header-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--texto2);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .header-back:hover { color: var(--verde); }
+
+    /* HERO */
+    .page-hero {
+      padding: 80px 24px 60px;
+      text-align: center;
+      border-bottom: 1px solid var(--borda);
+    }
+
+    .page-label {
+      font-size: 12px;
+      letter-spacing: 0.15em;
+      color: var(--verde);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .page-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(42px, 7vw, 80px);
+      line-height: 1;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+
+    .page-meta {
+      font-size: 14px;
+      color: var(--texto2);
+    }
+
+    /* CONTEÚDO */
+    .legal-wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 64px 24px 100px;
+    }
+
+    .legal-section {
+      margin-bottom: 48px;
+    }
+
+    .legal-section h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      color: #fff;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--borda);
+    }
+
+    .legal-section p {
+      font-size: 15px;
+      color: var(--texto2);
+      line-height: 1.8;
+      margin-bottom: 12px;
+      font-weight: 300;
+    }
+
+    .legal-section p strong {
+      color: var(--texto);
+      font-weight: 500;
+    }
+
+    .legal-section ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .legal-section ul li {
+      font-size: 15px;
+      color: var(--texto2);
+      line-height: 1.6;
+      font-weight: 300;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .legal-section ul li::before {
+      content: '–';
+      position: absolute;
+      left: 0;
+      color: var(--verde);
+    }
+
+    .info-box {
+      background: var(--card);
+      border: 1px solid var(--borda);
+      border-left: 3px solid var(--verde);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: var(--texto2);
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    .info-box strong {
+      color: var(--verde);
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .warning-box {
+      background: rgba(233,69,96,0.07);
+      border: 1px solid rgba(233,69,96,0.2);
+      border-left: 3px solid #e94560;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: var(--texto2);
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    .warning-box strong {
+      color: #e94560;
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--borda);
+      padding: 40px 24px;
+      text-align: center;
+    }
+
+    .footer-logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      color: var(--verde);
+      margin-bottom: 8px;
+    }
+
+    .footer-text {
+      font-size: 13px;
+      color: var(--texto2);
+      margin-top: 4px;
+    }
+
+    .footer-links {
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    .footer-links a {
+      color: var(--texto2);
+      text-decoration: underline;
+      margin: 0 8px;
+    }
+    .footer-links a:hover { color: var(--verde); }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <a href="index.html" class="header-logo">Gol Match BR</a>
+    <a href="index.html" class="header-back">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13 8H3M7 4L3 8l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Voltar ao início
+    </a>
+  </header>
+
+  <div class="page-hero">
+    <div class="page-label">Legal</div>
+    <h1 class="page-title">Termos<br/>de Uso</h1>
+    <p class="page-meta">Última atualização: abril de 2026 · Leia antes de assinar o serviço</p>
+  </div>
+
+  <div class="legal-wrap">
+
+    <div class="info-box">
+      <strong>Resumo</strong>
+      O Gol Match BR oferece um serviço de informação estatística sobre futebol via Telegram. As análises são geradas por modelo matemático automatizado e <strong>não constituem conselho financeiro nem incentivo a apostas</strong>. A assinatura é mensal, sem fidelidade, e pode ser cancelada a qualquer momento.
+    </div>
+
+    <div class="legal-section">
+      <h2>1. Aceitação dos termos</h2>
+      <p>Ao assinar o serviço <strong>Gol Match BR</strong>, você declara ter lido, compreendido e aceito integralmente estes Termos de Uso, bem como a nossa <a href="politica-de-privacidade.html" style="color:var(--verde);">Política de Privacidade</a>.</p>
+      <p>Caso não concorde com qualquer parte destes termos, não realize a assinatura.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>2. Descrição do serviço</h2>
+      <p>O Gol Match BR é um serviço de <strong>análise estatística automatizada de futebol</strong>, operado via grupo privado no Telegram. O serviço consiste em:</p>
+      <ul>
+        <li>Envio automático de análises estatísticas de jogos das 13 ligas monitoradas, três vezes ao dia (às 8h, 13h e 19h).</li>
+        <li>Notificação automática de resultados ao término de cada partida analisada.</li>
+        <li>Acesso ao histórico de análises e taxa de acerto dos últimos 30 dias.</li>
+      </ul>
+      <p>O serviço tem caráter <strong>exclusivamente informativo</strong>. As análises são produzidas por modelo matemático baseado em dados estatísticos públicos e não representam garantia de resultado, previsão ou recomendação de aposta.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>3. Assinatura e pagamento</h2>
+      <p>O acesso ao serviço é condicionado ao pagamento de uma <strong>assinatura mensal de R$27,00</strong>, processada pela plataforma <strong>Kiwify</strong>.</p>
+      <ul>
+        <li>A cobrança é realizada mensalmente, na data correspondente à primeira assinatura.</li>
+        <li>O acesso ao grupo do Telegram é liberado automaticamente após a confirmação do pagamento.</li>
+        <li>Em caso de falha no pagamento, o acesso poderá ser suspenso até a regularização.</li>
+        <li>Eventuais promoções ou cupons de desconto são válidos apenas pelo período informado no momento da aplicação.</li>
+      </ul>
+    </div>
+
+    <div class="legal-section">
+      <h2>4. Cancelamento e reembolso</h2>
+      <p>Você pode cancelar a assinatura a qualquer momento, sem multa ou fidelidade, diretamente pela plataforma Kiwify.</p>
+      <ul>
+        <li>Após o cancelamento, o acesso permanece ativo até o fim do período já pago.</li>
+        <li>Não há reembolso proporcional por dias não utilizados dentro do período vigente, exceto nos casos abaixo.</li>
+      </ul>
+      <p><strong>Garantia de 7 dias:</strong> se você não ficar satisfeito com o serviço nos primeiros 7 dias após a primeira assinatura, pode solicitar reembolso integral pelo Telegram (@golmatchbr) ou pela plataforma Kiwify, sem necessidade de justificativa.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>5. Isenção de responsabilidade</h2>
+
+      <div class="warning-box">
+        <strong>Aviso importante sobre apostas</strong>
+        O Gol Match BR é um serviço de informação estatística. As análises <strong>não constituem conselho financeiro, recomendação de investimento nem incentivo à prática de apostas esportivas</strong>. Qualquer decisão de aposta é de exclusiva responsabilidade do usuário.
+      </div>
+
+      <p>O Gol Match BR não se responsabiliza por:</p>
+      <ul>
+        <li>Perdas financeiras decorrentes do uso das análises em apostas ou qualquer outra atividade.</li>
+        <li>A precisão ou atualidade dos dados obtidos de fontes externas (APIs de futebol).</li>
+        <li>Interrupções temporárias do serviço decorrentes de falhas técnicas, manutenção ou indisponibilidade de APIs terceiras.</li>
+        <li>Atrasos ou falhas de entrega causadas por instabilidade na plataforma Telegram.</li>
+        <li>Decisões tomadas com base nas análises fornecidas.</li>
+      </ul>
+      <p>O serviço é fornecido <strong>"no estado em que se encontra"</strong>, sem garantia de disponibilidade ininterrupta ou de resultado em qualquer análise específica.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>6. Conduta do usuário</h2>
+      <p>Ao acessar o grupo privado do Telegram, o usuário compromete-se a:</p>
+      <ul>
+        <li>Não compartilhar, reproduzir ou redistribuir o conteúdo do grupo com terceiros sem autorização.</li>
+        <li>Não utilizar as análises para fins comerciais sem licença expressa.</li>
+        <li>Manter conduta respeitosa com outros membros e com a administração do grupo.</li>
+        <li>Não utilizar ferramentas automatizadas para coletar ou scraping de conteúdo do grupo.</li>
+      </ul>
+      <p>O descumprimento dessas regras pode resultar na <strong>remoção imediata do grupo</strong> sem direito a reembolso do período vigente.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>7. Propriedade intelectual</h2>
+      <p>Todo o conteúdo produzido pelo Gol Match BR — incluindo análises, metodologia, textos, layout e marca — é de propriedade exclusiva do serviço e protegido pela legislação de direitos autorais.</p>
+      <p>É vedada a reprodução, venda ou distribuição do conteúdo sem autorização prévia por escrito.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>8. Modificações do serviço</h2>
+      <p>Reservamo-nos o direito de alterar, suspender ou encerrar o serviço a qualquer momento, com aviso prévio razoável pelo canal do Telegram.</p>
+      <p>Em caso de encerramento definitivo do serviço, usuários com assinaturas ativas receberão reembolso proporcional ao período não utilizado.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>9. Alterações nestes termos</h2>
+      <p>Estes Termos de Uso podem ser atualizados periodicamente. Alterações relevantes serão comunicadas com antecedência mínima de 10 dias pelo grupo do Telegram.</p>
+      <p>O uso continuado do serviço após a vigência das alterações representa aceite dos novos termos.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>10. Lei aplicável e foro</h2>
+      <p>Estes Termos de Uso são regidos pela legislação brasileira, especialmente o <strong>Código de Defesa do Consumidor (Lei nº 8.078/1990)</strong>, o <strong>Marco Civil da Internet (Lei nº 12.965/2014)</strong> e a <strong>LGPD (Lei nº 13.709/2018)</strong>.</p>
+      <p>Fica eleito o foro da comarca do domicílio do usuário para resolução de qualquer conflito decorrente destes termos, conforme previsto no CDC.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>11. Contato</h2>
+      <p>Para dúvidas, reclamações ou solicitações relacionadas a estes termos:</p>
+      <ul>
+        <li>Telegram: <strong>@golmatchbr</strong></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="footer-logo">Gol Match BR</div>
+    <p class="footer-text">Análise estatística automatizada de futebol · @golmatchbr</p>
+    <div class="footer-links">
+      <a href="politica-de-privacidade.html">Política de Privacidade</a>
+      <a href="termos-de-uso.html">Termos de Uso</a>
+      <a href="index.html">Página inicial</a>
+    </div>
+  </footer>
+
+</body>
+</html>
