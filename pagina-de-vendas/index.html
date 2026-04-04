@@ -521,6 +521,24 @@
       background: linear-gradient(90deg, transparent, var(--verde), transparent);
     }
 
+    .hero-micro {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--texto2);
+    }
+
+    .preco-ancoragem {
+      font-size: 13px;
+      color: var(--texto2);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 8px 14px;
+      margin-bottom: 20px;
+      display: inline-block;
+    }
+    .preco-ancoragem strong { color: #fff; }
+
     .preco-valor {
       font-family: 'Bebas Neue', sans-serif;
       font-size: 96px;
@@ -799,9 +817,10 @@
     <p>Inteligência artificial analisando 13 ligas de futebol todo dia. Receba a análise completa direto no seu Telegram antes dos jogos começarem.</p>
     <div class="hero-cta">
       <a href="#assinar" class="btn-primary">
-        Assinar agora
+        Entrar agora — acesso imediato ao Telegram
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
+      <p class="hero-micro">🛡️ Garantia de 7 dias · Cancele quando quiser</p>
       <span class="btn-price">Por apenas <strong>R$27/mês</strong> · Cancele quando quiser</span>
     </div>
   </section>
@@ -983,6 +1002,7 @@
         <p class="section-sub">Um único plano com acesso completo a tudo.</p>
       </div>
       <div class="preco-card reveal">
+        <div class="preco-ancoragem">Tipsters cobram R$200–R$500/mês. Aqui é R$27.</div>
         <div class="preco-valor"><sup>R$</sup>27</div>
         <div class="preco-periodo">por mês · cancele quando quiser</div>
         <ul class="preco-features">
