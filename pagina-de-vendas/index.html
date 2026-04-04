@@ -594,6 +594,48 @@
       box-shadow: 0 20px 60px rgba(0,196,140,0.3);
     }
 
+    .garantia-box {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: rgba(0,196,140,0.07);
+      border: 1px solid rgba(0,196,140,0.2);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-top: 16px;
+      text-align: left;
+    }
+    .garantia-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+    .garantia-box strong { display: block; color: var(--verde); font-size: 14px; margin-bottom: 2px; }
+    .garantia-box span { font-size: 13px; color: var(--texto2); line-height: 1.4; }
+
+    /* Botão fixo mobile */
+    .btn-sticky-mobile {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 999;
+      padding: 12px 20px 20px;
+      background: linear-gradient(to top, #0a0f0b 80%, transparent);
+    }
+    .btn-sticky-mobile a {
+      display: block;
+      width: 100%;
+      text-align: center;
+      background: var(--verde);
+      color: #000;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 14px 20px;
+      border-radius: 12px;
+      text-decoration: none;
+    }
+    @media (max-width: 768px) {
+      .btn-sticky-mobile { display: block; }
+    }
+
     .preco-garantia {
       font-size: 13px;
       color: var(--texto2);
@@ -950,7 +992,14 @@
           <li>Histórico e taxa de acerto dos últimos 30 dias</li>
           <li>Modelo estatístico com H2H real e Poisson</li>
         </ul>
-        <a href="https://pay.kiwify.com.br/SNnNXe7" class="btn-primary-lg">Assinar agora por R$27/mês</a>
+        <a href="https://pay.kiwify.com.br/SNnNXe7" class="btn-primary-lg">Entrar agora — acesso imediato ao Telegram</a>
+        <div class="garantia-box">
+          <span class="garantia-icon">🛡️</span>
+          <div>
+            <strong>Garantia de 7 dias</strong>
+            <span>Se não ficar satisfeito, devolvemos 100% do valor. Sem perguntas.</span>
+          </div>
+        </div>
         <p class="preco-garantia">Cancele a qualquer momento · Sem fidelidade</p>
       </div>
     </div>
@@ -1273,6 +1322,21 @@
 
     updateCupomTimer();
     setInterval(updateCupomTimer, 50);
+
+    // Esconde botão fixo mobile quando seção de preço está visível
+    const precoSection = document.getElementById('assinar')
+    const stickyBtn = document.querySelector('.btn-sticky-mobile')
+    if (precoSection && stickyBtn) {
+      const stickyObs = new IntersectionObserver(function(entries) {
+        stickyBtn.style.display = entries[0].isIntersecting ? 'none' : ''
+      }, { threshold: 0.1 })
+      stickyObs.observe(precoSection)
+    }
   </script>
+
+  <!-- BOTÃO FIXO MOBILE -->
+  <div class="btn-sticky-mobile">
+    <a href="https://pay.kiwify.com.br/SNnNXe7">Assinar agora por R$27/mês →</a>
+  </div>
 </body>
 </html>
