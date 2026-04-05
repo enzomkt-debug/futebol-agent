@@ -8,8 +8,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 )
 
-const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY
-const API_BASE = 'https://api.football-data.org/v4'
 const ALERTA_CHAT_ID = '6116204841'
 
 async function enviarAlerta(mensagem) {
@@ -27,21 +25,8 @@ async function enviarAlerta(mensagem) {
   }
 }
 
-// Rate limiter: free tier = 10 req/min → 6.5s entre requests
-let ultimaRequisicao = 0
-async function apiFootball(url) {
-  const agora = Date.now()
-  const espera = ultimaRequisicao + 6500 - agora
-  if (espera > 0) {
-    process.stdout.write('  (aguardando rate limit ' + Math.ceil(espera / 1000) + 's...)\r')
-    await new Promise(r => setTimeout(r, espera))
-  }
-  ultimaRequisicao = Date.now()
-  const res = await axios.get(API_BASE + url, {
-    headers: { 'X-Auth-Token': API_FOOTBALL_KEY }
-  })
-  return res.data
-}
+// Rate limiter compartilhado com index.js para não duplicar taxa de requisições
+const { apiFootball } = require('./apiFootball')
 
 async function buscarResultadoPartida(matchId) {
   try {

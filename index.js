@@ -5,11 +5,9 @@ const { verificarAcerto } = require('./utils')
 const { postarInstagram } = require('./instagram')
 const { createClient } = require('@supabase/supabase-js')
 
-const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
 const ALERTA_CHAT_ID = '6116204841'
-const API_BASE = 'https://api.football-data.org/v4'
 
 // Mutex para monitorarResultados — impede execuções sobrepostas
 let monitorEmExecucao = false
@@ -31,21 +29,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 )
 
-// ─── RATE LIMITER ───
-// football-data.org free tier: 10 req/min → aguarda 6.5s entre requests
-let ultimaRequisicao = 0
-async function apiFootball(url, params) {
-  const agora = Date.now()
-  const espera = ultimaRequisicao + 6500 - agora
-  if (espera > 0) await new Promise(r => setTimeout(r, espera))
-  ultimaRequisicao = Date.now()
-
-  const res = await axios.get(API_BASE + url, {
-    headers: { 'X-Auth-Token': API_FOOTBALL_KEY },
-    params
-  })
-  return res.data
-}
+// ─── RATE LIMITER (compartilhado com popularResultados.js via apiFootball.js) ───
+const { apiFootball } = require('./apiFootball')
 
 // ─── APOSTAS VIA SUPABASE (substitui apostas_ontem.json) ───
 // CORREÇÃO CRÍTICA: o filesystem do Railway é efêmero.
@@ -1158,9 +1143,7 @@ if (require.main === module) {
   cron.schedule('0 10 * * *',       function() { postarNoticia() },       { timezone: 'America/Sao_Paulo' })
   cron.schedule('0 9 * * *',        function() { runEducativo('manha') }, { timezone: 'America/Sao_Paulo' })
   cron.schedule('0 15 * * *',       function() { runEducativo('tarde') }, { timezone: 'America/Sao_Paulo' })
-  cron.schedule('*/5 14-23 * * *', function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
-  cron.schedule('*/5 0-2 * * *',   function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
-  cron.schedule('*/5 3-13 * * *',  function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
+  cron.schedule('*/5 * * * *', function() { monitorarResultados() }, { timezone: 'America/Sao_Paulo' })
 
   console.log('Agente agendado: 8h, 9h, 10h, 12h, 13h, 15h e 19h (horario de Brasilia)')
   console.log('Monitor de resultados: a cada 5 minutos entre 14h e 02h')
