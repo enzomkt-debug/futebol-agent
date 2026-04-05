@@ -185,13 +185,13 @@ async function publicarStoryViaPubler(imageUrl) {
     const mediaId = await uploadMedia(imageUrl)
     const networks = {
       instagram: {
-        type: 'photo',
+        type: 'story',
         text: '',
         media: [{ id: mediaId, type: 'image' }],
-        details: { type: 'story' },
       },
     }
-    await createPost(networks)
+    const jobId = await createPost(networks)
+    await pollJob(jobId)
     console.log('Story publicado com sucesso!')
     return true
   } catch (err) {
@@ -225,6 +225,9 @@ async function postarInstagram(apostasOntem, resultados, turno) {
     const storyUrl = await gerarESubirStory(apostasOntem || [], resultados || [])
     if (storyUrl) {
       await publicarStoryViaPubler(storyUrl)
+    } else {
+      console.error('Story URL nula — upload falhou, story nao publicado')
+      await enviarAlerta('🔴 <b>Instagram (story) — Upload falhou</b>\nstoryUrl nula, story nao publicado')
     }
 
   } catch (err) {
