@@ -283,14 +283,174 @@ async function gerarImagemContexto(jogo) {
   return caminhoLocal
 }
 
-async function publicarViaZernio(caption, imageUrl) {
+async function gerarImagemContextoStory(jogo) {
+  const W = 1080
+  const H = 1920
+  const canvas = createCanvas(W, H)
+  const ctx = canvas.getContext('2d')
+
+  ctx.fillStyle = '#0d0d1a'
+  ctx.fillRect(0, 0, W, H)
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.025)'
+  ctx.lineWidth = 1
+  for (let i = 0; i < W; i += 80) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H); ctx.stroke()
+  }
+
+  ctx.fillStyle = '#e94560'
+  ctx.globalAlpha = 0.05
+  ctx.beginPath()
+  ctx.arc(900, 400, 700, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.globalAlpha = 1
+
+  ctx.fillStyle = '#e94560'
+  ctx.fillRect(0, 0, W, 8)
+
+  ctx.fillStyle = '#e94560'
+  ctx.font = 'bold 52px ' + FONTE
+  ctx.textAlign = 'center'
+  ctx.fillText('Gol Match BR', W / 2, 110)
+
+  ctx.fillStyle = '#444455'
+  ctx.font = '26px ' + FONTE
+  ctx.fillText('@golmatchbr', W / 2, 150)
+
+  const ligaCurta = jogo.liga.length > 30 ? jogo.liga.substring(0, 30) + '...' : jogo.liga
+  ctx.fillStyle = '#e94560'
+  ctx.font = 'bold 22px ' + FONTE
+  ctx.fillText(ligaCurta.toUpperCase(), W / 2, 200)
+
+  ctx.fillStyle = '#e94560'
+  ctx.fillRect(70, 220, 940, 2)
+
+  ctx.fillStyle = '#555566'
+  ctx.font = 'bold 24px ' + FONTE
+  ctx.fillText('ANALISE DO DIA', W / 2, 290)
+
+  const maxLen = 18
+  const casaNome = jogo.timeCasa.length > maxLen ? jogo.timeCasa.substring(0, maxLen) : jogo.timeCasa
+  const foraNome = jogo.timeFora.length > maxLen ? jogo.timeFora.substring(0, maxLen) : jogo.timeFora
+
+  const [logoCasa, logoFora] = await Promise.all([
+    buscarLogoTime(jogo.timeCasa),
+    buscarLogoTime(jogo.timeFora)
+  ])
+
+  // Logos grandes centralizados
+  const logoSize = 180
+  const logoCasaX = W / 2 - 230
+  const logoForaX = W / 2 + 230
+  const logoY = 500
+
+  if (logoCasa) {
+    const scale = Math.min(logoSize / logoCasa.width, logoSize / logoCasa.height)
+    const lw = logoCasa.width * scale
+    const lh = logoCasa.height * scale
+    ctx.drawImage(logoCasa, logoCasaX - lw / 2, logoY - lh / 2, lw, lh)
+  }
+
+  if (logoFora) {
+    const scale = Math.min(logoSize / logoFora.width, logoSize / logoFora.height)
+    const lw = logoFora.width * scale
+    const lh = logoFora.height * scale
+    ctx.drawImage(logoFora, logoForaX - lw / 2, logoY - lh / 2, lw, lh)
+  }
+
+  // VS central
+  ctx.fillStyle = '#e94560'
+  ctx.font = 'bold 64px ' + FONTE
+  ctx.fillText('VS', W / 2, logoY + 20)
+
+  // Nomes dos times
+  ctx.fillStyle = '#ffffff'
+  ctx.font = 'bold 56px ' + FONTE
+  ctx.fillText(casaNome, W / 2 - 230, logoY + 130)
+
+  ctx.fillStyle = '#ffffff'
+  ctx.font = 'bold 56px ' + FONTE
+  ctx.fillText(foraNome, W / 2 + 230, logoY + 130)
+
+  const dataFormatada = new Date(jogo.dataJogo + 'T12:00:00').toLocaleDateString('pt-BR', {
+    weekday: 'long', day: '2-digit', month: 'long'
+  })
+  ctx.fillStyle = '#888899'
+  ctx.font = '30px ' + FONTE
+  ctx.fillText(dataFormatada, W / 2, 770)
+
+  ctx.fillStyle = '#222233'
+  ctx.fillRect(70, 810, 940, 1)
+
+  // Caixa de dados
+  ctx.fillStyle = '#1a1a2e'
+  ctx.beginPath()
+  ctx.roundRect(70, 840, 940, 280, 16)
+  ctx.fill()
+  ctx.strokeStyle = '#333355'
+  ctx.lineWidth = 0.5
+  ctx.beginPath()
+  ctx.roundRect(70, 840, 940, 280, 16)
+  ctx.stroke()
+
+  ctx.fillStyle = '#e94560'
+  ctx.font = 'bold 26px ' + FONTE
+  ctx.fillText('O QUE OS DADOS DIZEM?', W / 2, 900)
+
+  ctx.fillStyle = '#ccccdd'
+  ctx.font = '30px ' + FONTE
+  ctx.fillText('Nossos assinantes ja receberam', W / 2, 960)
+  ctx.fillText('a analise completa as 8h.', W / 2, 1005)
+
+  ctx.fillStyle = '#888899'
+  ctx.font = '24px ' + FONTE
+  ctx.fillText('Brasileirao · Champions · Premier · Libertadores', W / 2, 1060)
+  ctx.fillText('Libertadores · Serie A · Bundesliga · Ligue 1', W / 2, 1093)
+
+  // CTA button
+  ctx.fillStyle = '#e94560'
+  ctx.beginPath()
+  ctx.roundRect(215, 1170, 650, 80, 40)
+  ctx.fill()
+
+  ctx.fillStyle = '#ffffff'
+  ctx.font = 'bold 30px ' + FONTE
+  ctx.fillText('ASSINAR — LINK NA BIO', W / 2, 1220)
+
+  ctx.fillStyle = '#444455'
+  ctx.font = '24px ' + FONTE
+  ctx.fillText('Analise baseada em dados, nao em palpite', W / 2, 1310)
+
+  ctx.fillStyle = '#333344'
+  ctx.font = '22px ' + FONTE
+  ctx.fillText('golmatchbr · analise estatistica de futebol', W / 2, 1350)
+
+  ctx.fillStyle = '#e94560'
+  ctx.fillRect(0, H - 8, W, 8)
+
+  ctx.textAlign = 'left'
+
+  const assetsDir = path.join(__dirname, 'assets')
+  if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir)
+
+  const caminhoLocal = path.join(assetsDir, 'card-contexto-story.png')
+  fs.writeFileSync(caminhoLocal, canvas.toBuffer('image/png'))
+  console.log('Imagem story de contexto gerada')
+  return caminhoLocal
+}
+
+async function publicarViaZernio(caption, imageUrl, isStory) {
+  const tipo = isStory ? 'story' : 'feed'
   if (process.env.TEST_MODE === 'true') {
-    console.log('[TEST MODE] Publicação bloqueada (feed)')
+    console.log('[TEST MODE] Publicação bloqueada (' + tipo + ')')
     return true
   }
+  const plataforma = isStory
+    ? { platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID, platformSpecificData: { contentType: 'story' } }
+    : { platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }
   try {
     await axios.post('https://zernio.com/api/v1/posts', {
-      platforms: [{ platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }],
+      platforms: [plataforma],
       content: caption,
       mediaItems: [{ type: 'image', url: imageUrl }],
       publishNow: true
@@ -301,11 +461,11 @@ async function publicarViaZernio(caption, imageUrl) {
       },
       timeout: 30000
     })
-    console.log('Post de contexto publicado no Instagram!')
+    console.log('Post de contexto publicado no Instagram (' + tipo + ')!')
     return true
   } catch (err) {
-    console.error('Erro ao publicar contexto:', err.response?.data || err.message)
-    await enviarAlerta('🔴 <b>postContexto — Erro Zernio</b>\n' + (err.response?.data?.message || err.message))
+    console.error('Erro ao publicar contexto (' + tipo + '):', err.response?.data || err.message)
+    await enviarAlerta('🔴 <b>postContexto — Erro Zernio (' + tipo + ')</b>\n' + (err.response?.data?.message || err.message))
     return false
   }
 }
@@ -335,13 +495,20 @@ async function postarContextoJogo(jogoDestaque, turno) {
     const hashtags = gerarHashtags(jogoDestaque.liga)
     const caption = texto + '\n\n' + hashtags
 
-    const caminhoLocal = await gerarImagemContexto(jogoDestaque)
+    const [caminhoLocal, caminhoStory] = await Promise.all([
+      gerarImagemContexto(jogoDestaque),
+      gerarImagemContextoStory(jogoDestaque)
+    ])
 
     // [skip ci] incluído automaticamente via utils.subirImagemGithub
-    const imageUrl = await subirImagemGithub(axios, caminhoLocal, 'card-contexto.png')
+    const [imageUrl, storyUrl] = await Promise.all([
+      subirImagemGithub(axios, caminhoLocal, 'card-contexto.png'),
+      subirImagemGithub(axios, caminhoStory, 'card-contexto-story.png')
+    ])
     if (!imageUrl) return
 
-    await publicarViaZernio(caption, imageUrl)
+    await publicarViaZernio(caption, imageUrl, false)
+    if (storyUrl) await publicarViaZernio('', storyUrl, true)
 
   } catch (err) {
     console.error('Erro no post de contexto:', err.message)
