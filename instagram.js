@@ -33,8 +33,8 @@ async function pollJob(jobId, maxAttempts = 15, intervalMs = 2000) {
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise(r => setTimeout(r, intervalMs))
     const { data } = await axios.get(`${BASE_URL}/job_status/${jobId}`, { headers: publerHeaders() })
-    const status = data?.data?.status
-    if (status === 'complete') return data.data.result
+    const status = data?.status
+    if (status === 'complete') return data.payload?.[0]
     if (status === 'failed') throw new Error(`Publer job failed: ${JSON.stringify(data)}`)
   }
   throw new Error(`Publer job ${jobId} timed out`)
@@ -45,7 +45,7 @@ async function uploadMedia(imageUrl) {
   try {
     res = await axios.post(
       `${BASE_URL}/media/from-url`,
-      { url: imageUrl, direct_upload: false, in_library: false },
+      { media: [{ url: imageUrl, account_ids: [process.env.PUBLER_INSTAGRAM_ACCOUNT_ID] }] },
       { headers: publerHeaders(), timeout: 30000 }
     )
   } catch (err) {
@@ -53,11 +53,9 @@ async function uploadMedia(imageUrl) {
     throw new Error(`Publer media upload ${err.response?.status ?? ''}: ${detail}`)
   }
 
-  if (res.data?.id) return res.data.id
-
   if (res.data?.job_id) {
     const result = await pollJob(res.data.job_id)
-    const mediaId = result?.id || result?.media_id
+    const mediaId = result?.id
     if (!mediaId) throw new Error(`Publer media job sem ID: ${JSON.stringify(result)}`)
     return mediaId
   }
