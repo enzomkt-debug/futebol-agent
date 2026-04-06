@@ -191,7 +191,8 @@ async function publicarStoryViaPubler(imageUrl) {
         details: { type: 'story' },
       },
     }
-    await createPost(networks)
+    const jobId = await createPost(networks)
+    await pollJob(jobId)
     console.log('Story publicado com sucesso!')
     return true
   } catch (err) {
@@ -223,9 +224,12 @@ async function postarInstagram(apostasOntem, resultados, turno) {
 
     console.log('Gerando story de resultado...')
     const storyUrl = await gerarESubirStory(apostasOntem || [], resultados || [])
-    if (storyUrl) {
-      await publicarStoryViaPubler(storyUrl)
+    if (!storyUrl) {
+      console.error('Nao foi possivel gerar URL publica do story.')
+      await enviarAlerta('🔴 <b>Instagram (story) — Erro ao gerar imagem</b>\nURL nula após gerarESubirStory')
+      return
     }
+    await publicarStoryViaPubler(storyUrl)
 
   } catch (err) {
     console.error('Erro no modulo Instagram:', err.message)
