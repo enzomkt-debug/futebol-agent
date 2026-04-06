@@ -1063,6 +1063,7 @@ async function runAgent(turno) {
 
     // 6. Posta no Instagram com dados de ontem (turno manhã)
     // Verifica se o monitor já postou para evitar duplicata
+    let igStatus = 'sem apostas de ontem'
     if (turno === 'manha' && apostasOntemParaInstagram && apostasOntemParaInstagram.length) {
       const ontem = new Date()
       ontem.setDate(ontem.getDate() - 1)
@@ -1070,19 +1071,27 @@ async function runAgent(turno) {
       const igJaPostado = await jaPostadoInstagram(apostasOntemParaInstagram[0].matchId, dataOntem)
       if (!igJaPostado) {
         try {
-          await postarInstagram(apostasOntemParaInstagram, resultadosReaisParaInstagram, turno)
-          await marcarPostadoInstagram(apostasOntemParaInstagram[0].matchId, dataOntem)
+          const igOk = await postarInstagram(apostasOntemParaInstagram, resultadosReaisParaInstagram, turno)
+          if (igOk) {
+            await marcarPostadoInstagram(apostasOntemParaInstagram[0].matchId, dataOntem)
+            igStatus = 'postado'
+          } else {
+            igStatus = 'falhou (sem excecao)'
+            await enviarAlerta('🔴 <b>runAgent(manha) — Instagram nao postado</b>\npostarInstagram() retornou false')
+          }
         } catch (err) {
+          igStatus = 'erro: ' + err.message
           await enviarAlerta('🔴 <b>runAgent(manha) — Erro Instagram</b>\nFalha ao gerar/publicar card\n' + err.message)
         }
       } else {
+        igStatus = 'ja postado pelo monitor'
         console.log('Instagram já postado pelo monitor — pulando publicação no runAgent')
       }
     }
 
     if (turno === 'manha') {
       const nResultados = resultadosReaisParaInstagram.filter(Boolean).length
-      await enviarAlerta('✅ <b>runAgent(manha) concluído</b>\n' + top5.length + ' apostas geradas, ' + nResultados + ' resultados processados, Instagram postado')
+      await enviarAlerta('✅ <b>runAgent(manha) concluído</b>\n' + top5.length + ' apostas geradas, ' + nResultados + ' resultados processados, Instagram: ' + igStatus)
     }
 
   } catch (err) {

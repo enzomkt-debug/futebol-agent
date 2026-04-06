@@ -202,11 +202,11 @@ async function publicarStoryViaPubler(imageUrl) {
 }
 
 async function postarInstagram(apostasOntem, resultados, turno) {
-  if (turno !== 'manha') return
+  if (turno !== 'manha') return false
 
   if (!process.env.PUBLER_API_KEY || !process.env.PUBLER_INSTAGRAM_ACCOUNT_ID) {
     console.log('Credenciais do Publer nao configuradas.')
-    return
+    return false
   }
 
   try {
@@ -215,11 +215,12 @@ async function postarInstagram(apostasOntem, resultados, turno) {
 
     if (!imageUrl) {
       console.log('Nao foi possivel gerar URL publica da imagem.')
-      return
+      return false
     }
 
     const caption = gerarCaption(apostasOntem, resultados || [])
-    await publicarViaPubler(caption, imageUrl)
+    const feedOk = await publicarViaPubler(caption, imageUrl)
+    if (!feedOk) return false
 
     console.log('Gerando story de resultado...')
     const storyUrl = await gerarESubirStory(apostasOntem || [], resultados || [])
@@ -227,8 +228,10 @@ async function postarInstagram(apostasOntem, resultados, turno) {
       await publicarStoryViaPubler(storyUrl)
     }
 
+    return true
   } catch (err) {
     console.error('Erro no modulo Instagram:', err.message)
+    return false
   }
 }
 
