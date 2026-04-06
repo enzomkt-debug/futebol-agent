@@ -116,7 +116,7 @@ Analise completa todo dia as 8h no Telegram. Link na bio para acessar.
   const taxa = total > 0 ? Math.round((acertos / total) * 100) : 0
   const destaqueRes = resultados[0]
   const placar = destaqueRes ? destaqueRes.golsCasa + ' x ' + destaqueRes.golsFora : ''
-  const probPct = (apostasOntem[0].odd && isFinite(apostasOntem[0].odd)) ? Math.round((1/apostasOntem[0].odd + (apostasOntem[0].edge || 0))*100) : 0
+  const probPct = (apostasOntem[0].odd && isFinite(apostasOntem[0].odd)) ? Math.min(99, Math.round((1/apostasOntem[0].odd + (apostasOntem[0].edge || 0))*100)) : 0
 
   if (destaqueAcertou) {
     return `✅ ACERTOU — ${hoje}
@@ -204,7 +204,7 @@ async function publicarStoryViaPubler(imageUrl) {
 async function postarInstagram(apostasOntem, resultados, turno) {
   if (turno !== 'manha') return false
 
-  if (!process.env.PUBLER_API_KEY || !process.env.PUBLER_INSTAGRAM_ACCOUNT_ID) {
+  if (!process.env.PUBLER_API_KEY || !process.env.PUBLER_INSTAGRAM_ACCOUNT_ID || !process.env.PUBLER_WORKSPACE_ID) {
     console.log('Credenciais do Publer nao configuradas.')
     return false
   }

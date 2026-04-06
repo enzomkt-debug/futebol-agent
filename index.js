@@ -54,7 +54,7 @@ async function salvarApostasHojeSupabase(apostas, turno) {
     const novos = []
     for (const r of registros) {
       const { data: existe } = await supabase.from('apostas')
-        .select('id').eq('match_id', r.match_id).eq('data_jogo', r.data_jogo).limit(1)
+        .select('id').eq('match_id', r.match_id).eq('data_jogo', r.data_jogo).eq('turno', r.turno).limit(1)
       if (!existe || !existe.length) novos.push(r)
     }
     if (!novos.length) { console.log('Apostas já existem no Supabase — nenhuma inserida'); return }
@@ -90,6 +90,7 @@ async function carregarApostasOntemSupabase() {
     // Normaliza para o mesmo formato usado pelo restante do código
     return data.map(function(r) {
       return {
+        supabaseId: r.id,
         matchId: r.match_id,
         jogo: r.jogo,
         liga: r.liga,
@@ -126,6 +127,7 @@ async function carregarApostasDoDia() {
 
     return data.map(function(r) {
       return {
+        supabaseId: r.id,
         matchId: r.match_id,
         jogo: r.jogo,
         liga: r.liga,
@@ -149,14 +151,20 @@ async function salvarResultadosSupabase(apostasOntem, resultados) {
       const resultado = resultados[i]
       if (!resultado) continue
 
-      const { data } = await supabase
-        .from('apostas')
-        .select('id')
-        .eq('match_id', String(aposta.matchId))
-        .order('criado_em', { ascending: false })
-        .limit(1)
-
-      if (!data || !data.length) continue
+      // Usa o ID Supabase preservado no carregamento para evitar lookup por match_id
+      // (que poderia retornar a aposta errada se o mesmo jogo aparecer em turnos diferentes)
+      let apostaId = aposta.supabaseId
+      if (!apostaId) {
+        const { data } = await supabase
+          .from('apostas')
+          .select('id')
+          .eq('match_id', String(aposta.matchId))
+          .eq('data_jogo', aposta.dataJogo)
+          .order('criado_em', { ascending: false })
+          .limit(1)
+        if (!data || !data.length) continue
+        apostaId = data[0].id
+      }
 
       const acertou = verificarAcerto(aposta, resultado)
 
@@ -164,13 +172,13 @@ async function salvarResultadosSupabase(apostasOntem, resultados) {
       const { data: existente } = await supabase
         .from('resultados')
         .select('id')
-        .eq('aposta_id', data[0].id)
+        .eq('aposta_id', apostaId)
         .limit(1)
 
       if (existente && existente.length) continue
 
       await supabase.from('resultados').insert({
-        aposta_id: data[0].id,
+        aposta_id: apostaId,
         gols_casa: resultado.golsCasa,
         gols_fora: resultado.golsFora,
         acertou: acertou
@@ -179,6 +187,7 @@ async function salvarResultadosSupabase(apostasOntem, resultados) {
     console.log('Resultados salvos no Supabase')
   } catch (err) {
     console.error('Erro ao salvar resultados:', err.message)
+    await enviarAlerta('🔴 <b>salvarResultadosSupabase — Erro</b>\n' + err.message)
   }
 }
 
@@ -710,8 +719,11 @@ function calcularEdge(stats) {
   const lambdaCasa = stats.casa.mediaGolsMarcados * stats.fora.mediaGolsSofridos
   const lambdaFora = stats.fora.mediaGolsMarcados * stats.casa.mediaGolsSofridos
 
-  // Pondera com H2H (30%) para suavizar
-  const lambdaTotal = (lambdaCasa + lambdaFora) * 0.7 + stats.h2h.mediaGols * 0.3
+  // Pondera com H2H (30%) para suavizar — fallback para média atual se h2h indisponível
+  const h2hMedia = (stats.h2h && stats.h2h.mediaGols != null && isFinite(stats.h2h.mediaGols))
+    ? stats.h2h.mediaGols
+    : (lambdaCasa + lambdaFora)
+  const lambdaTotal = (lambdaCasa + lambdaFora) * 0.7 + h2hMedia * 0.3
 
   // Probabilidades over/under 2.5 via Poisson
   const probUnder25 = poissonProb(lambdaTotal, 0) + poissonProb(lambdaTotal, 1) + poissonProb(lambdaTotal, 2)
