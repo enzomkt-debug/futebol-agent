@@ -5,8 +5,6 @@ const { verificarAcerto } = require('./utils')
 
 const BASE_URL = 'https://app.publer.com/api/v1'
 const ALERTA_CHAT_ID = '6116204841'
-const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
-const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 
 async function enviarAlerta(mensagem) {
   const payload = { chat_id: ALERTA_CHAT_ID, text: mensagem, parse_mode: 'HTML' }
@@ -176,35 +174,31 @@ async function publicarViaPubler(caption, imageUrl) {
   }
 }
 
-async function publicarStoryViaZernio(imageUrl) {
+async function publicarStoryViaPubler(imageUrl) {
   if (process.env.TEST_MODE === 'true') {
     console.log('[TEST MODE] Publicação bloqueada (story)')
     console.log('[TEST MODE] imageUrl:', imageUrl)
     return true
   }
   try {
-    console.log('Publicando Story no Instagram via Zernio...')
-    await axios.post('https://zernio.com/api/v1/posts', {
-      platforms: [{
-        platform: 'instagram',
-        accountId: ZERNIO_ACCOUNT_ID,
-        platformSpecificData: { contentType: 'story' },
-      }],
-      content: '',
-      mediaItems: [{ type: 'image', url: imageUrl }],
-      publishNow: true,
-    }, {
-      headers: {
-        Authorization: 'Bearer ' + ZERNIO_API_KEY,
-        'Content-Type': 'application/json',
+    console.log('Publicando Story no Instagram via Publer...')
+    const mediaId = await uploadMedia(imageUrl)
+    const networks = {
+      instagram: {
+        type: 'photo',
+        text: '',
+        media: [{ id: mediaId, type: 'photo' }],
+        details: { type: 'story' },
       },
-    })
-    console.log('Story publicado com sucesso via Zernio!')
+    }
+    const jobId = await createPost(networks)
+    await pollJob(jobId)
+    console.log('Story publicado com sucesso!')
     return true
   } catch (err) {
     const detail = err.response?.data ? JSON.stringify(err.response.data) : err.message
     console.error('Erro ao publicar story:', detail)
-    await enviarAlerta('🔴 <b>Instagram (story) — Erro Zernio</b>\n' + detail)
+    await enviarAlerta('🔴 <b>Instagram (story) — Erro Publer</b>\n' + detail)
     return false
   }
 }
@@ -236,7 +230,7 @@ async function postarInstagram(apostasOntem, resultados, turno) {
       await enviarAlerta('🔴 <b>Instagram (story) — Erro ao gerar imagem</b>\nURL nula após gerarESubirStory')
       return
     }
-    await publicarStoryViaZernio(storyUrl)
+    await publicarStoryViaPubler(storyUrl)
 
   } catch (err) {
     console.error('Erro no modulo Instagram:', err.message)
