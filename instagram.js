@@ -183,6 +183,7 @@ async function publicarStoryViaPubler(imageUrl) {
   try {
     console.log('Publicando Story no Instagram via Publer...')
     const mediaId = await uploadMedia(imageUrl)
+    console.log('[story] mediaId obtido:', mediaId)
     const networks = {
       instagram: {
         type: 'photo',
@@ -191,8 +192,9 @@ async function publicarStoryViaPubler(imageUrl) {
         details: { type: 'story' },
       },
     }
+    console.log('[story] payload networks:', JSON.stringify(networks))
     const jobId = await createPost(networks)
-    await pollJob(jobId)
+    console.log('[story] createPost jobId:', jobId)
     console.log('Story publicado com sucesso!')
     return true
   } catch (err) {
