@@ -40,7 +40,7 @@ async function pollJob(jobId, maxAttempts = 15, intervalMs = 2000) {
   throw new Error(`Publer job ${jobId} timed out`)
 }
 
-async function uploadMedia(imageUrl) {
+async function uploadMedia(imageUrl, maxPollAttempts = 15) {
   let res
   try {
     res = await axios.post(
@@ -54,7 +54,7 @@ async function uploadMedia(imageUrl) {
   }
 
   if (res.data?.job_id) {
-    const result = await pollJob(res.data.job_id)
+    const result = await pollJob(res.data.job_id, maxPollAttempts)
     const mediaId = result?.id
     if (!mediaId) throw new Error(`Publer media job sem ID: ${JSON.stringify(result)}`)
     return mediaId
@@ -182,7 +182,8 @@ async function publicarStoryViaPubler(imageUrl) {
   }
   try {
     console.log('Publicando Story no Instagram via Publer...')
-    const mediaId = await uploadMedia(imageUrl)
+    console.log('[story] iniciando uploadMedia para:', imageUrl)
+    const mediaId = await uploadMedia(imageUrl, 30)
     console.log('[story] mediaId obtido:', mediaId)
     const networks = {
       instagram: {
