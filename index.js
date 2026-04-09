@@ -1070,30 +1070,24 @@ async function runAgent(turno) {
     }
 
     // 6. Posta no Instagram com dados de ontem (turno manhã)
-    // Verifica se o monitor já postou para evitar duplicata
+    // runAgent sempre tenta postar — é a garantia das 8h.
+    // O monitor pode ter postado antes, mas se falhou silenciosamente e marcou incorretamente,
+    // o runAgent reprocessa sem depender da marca do Supabase.
     let igStatus = 'pulado'
     if (turno === 'manha' && apostasOntemParaInstagram && apostasOntemParaInstagram.length) {
-      const ontem = new Date()
-      ontem.setDate(ontem.getDate() - 1)
-      const dataOntem = ontem.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
-      const igJaPostado = await jaPostadoInstagram(apostasOntemParaInstagram[0].matchId, dataOntem)
-      if (!igJaPostado) {
-        try {
-          const igOk = await postarInstagram(apostasOntemParaInstagram, resultadosReaisParaInstagram, turno)
-          if (igOk) {
-            await marcarPostadoInstagram(apostasOntemParaInstagram[0].matchId, dataOntem)
-            igStatus = 'postado ✅'
-          } else {
-            igStatus = 'falhou ❌'
-            await enviarAlerta('🔴 <b>runAgent(manha) — Instagram nao publicado</b>\nVerificar credenciais Publer ou erro na geracao da imagem')
-          }
-        } catch (err) {
-          igStatus = 'erro ❌'
-          await enviarAlerta('🔴 <b>runAgent(manha) — Erro Instagram</b>\n' + err.message)
+      try {
+        const igOk = await postarInstagram(apostasOntemParaInstagram, resultadosReaisParaInstagram, turno)
+        if (igOk) {
+          await marcarPostadoInstagram(apostasOntemParaInstagram[0].matchId,
+            new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }))
+          igStatus = 'postado ✅'
+        } else {
+          igStatus = 'falhou ❌'
+          await enviarAlerta('🔴 <b>runAgent(manha) — Instagram nao publicado</b>\nVerificar credenciais Publer ou erro na geracao da imagem')
         }
-      } else {
-        igStatus = 'ja postado pelo monitor'
-        console.log('Instagram já postado pelo monitor — pulando publicação no runAgent')
+      } catch (err) {
+        igStatus = 'erro ❌'
+        await enviarAlerta('🔴 <b>runAgent(manha) — Erro Instagram</b>\n' + err.message)
       }
     }
 
