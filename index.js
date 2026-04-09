@@ -517,9 +517,13 @@ async function monitorarResultados() {
       const igJaPostado = await jaPostadoInstagram(aposta.matchId, hoje)
       if (!igJaPostado) {
         try {
-          await postarInstagram([aposta], [resultado], 'manha')
-          await marcarPostadoInstagram(aposta.matchId, hoje)
-          await enviarAlerta('✅ <b>Monitor — Instagram postado</b>\n' + emoji + ' ' + aposta.jogo + ' ' + placar + ' — ' + status)
+          const igOk = await postarInstagram([aposta], [resultado], 'manha')
+          if (igOk) {
+            await marcarPostadoInstagram(aposta.matchId, hoje)
+            await enviarAlerta('✅ <b>Monitor — Instagram postado</b>\n' + emoji + ' ' + aposta.jogo + ' ' + placar + ' — ' + status)
+          } else {
+            await enviarAlerta('🔴 <b>Monitor — Instagram nao publicado</b>\n' + aposta.jogo + '\nVerificar credenciais Publer ou erro na geracao da imagem')
+          }
         } catch (err) {
           await enviarAlerta('🔴 <b>Monitor — Erro Instagram</b>\nFalha ao publicar card de ' + aposta.jogo + '\n' + err.message)
         }
@@ -1067,6 +1071,7 @@ async function runAgent(turno) {
 
     // 6. Posta no Instagram com dados de ontem (turno manhã)
     // Verifica se o monitor já postou para evitar duplicata
+    let igStatus = 'pulado'
     if (turno === 'manha' && apostasOntemParaInstagram && apostasOntemParaInstagram.length) {
       const ontem = new Date()
       ontem.setDate(ontem.getDate() - 1)
@@ -1074,19 +1079,27 @@ async function runAgent(turno) {
       const igJaPostado = await jaPostadoInstagram(apostasOntemParaInstagram[0].matchId, dataOntem)
       if (!igJaPostado) {
         try {
-          await postarInstagram(apostasOntemParaInstagram, resultadosReaisParaInstagram, turno)
-          await marcarPostadoInstagram(apostasOntemParaInstagram[0].matchId, dataOntem)
+          const igOk = await postarInstagram(apostasOntemParaInstagram, resultadosReaisParaInstagram, turno)
+          if (igOk) {
+            await marcarPostadoInstagram(apostasOntemParaInstagram[0].matchId, dataOntem)
+            igStatus = 'postado ✅'
+          } else {
+            igStatus = 'falhou ❌'
+            await enviarAlerta('🔴 <b>runAgent(manha) — Instagram nao publicado</b>\nVerificar credenciais Publer ou erro na geracao da imagem')
+          }
         } catch (err) {
-          await enviarAlerta('🔴 <b>runAgent(manha) — Erro Instagram</b>\nFalha ao gerar/publicar card\n' + err.message)
+          igStatus = 'erro ❌'
+          await enviarAlerta('🔴 <b>runAgent(manha) — Erro Instagram</b>\n' + err.message)
         }
       } else {
+        igStatus = 'ja postado pelo monitor'
         console.log('Instagram já postado pelo monitor — pulando publicação no runAgent')
       }
     }
 
     if (turno === 'manha') {
       const nResultados = resultadosReaisParaInstagram.filter(Boolean).length
-      await enviarAlerta('✅ <b>runAgent(manha) concluído</b>\n' + top5.length + ' apostas geradas, ' + nResultados + ' resultados processados, Instagram postado')
+      await enviarAlerta('✅ <b>runAgent(manha) concluído</b>\n' + top5.length + ' apostas geradas, ' + nResultados + ' resultados processados\nInstagram: ' + igStatus)
     }
 
   } catch (err) {
