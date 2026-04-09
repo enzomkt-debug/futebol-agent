@@ -453,9 +453,9 @@ function gerarTextoResultado(apostas, resultados) {
 // ─── MONITORAMENTO EM TEMPO REAL ───
 
 async function monitorarResultados() {
-  // Só monitora entre 14h e 02h (horário de Brasília) — fora desse intervalo não há jogos
+  // Só monitora entre 12h e 02h (horário de Brasília) — cobre jogos europeus de início de tarde e noturnos
   const horaAtual = parseInt(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hour12: false }))
-  if (horaAtual >= 2 && horaAtual < 14) return
+  if (horaAtual >= 2 && horaAtual < 12) return
 
   if (monitorEmExecucao) {
     console.log('[monitor] Execução anterior ainda em andamento — pulando este tick')
