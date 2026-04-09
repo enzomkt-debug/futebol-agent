@@ -3,7 +3,10 @@ const axios = require('axios')
 const { createCanvas, loadImage, registerFont } = require('canvas')
 const fs = require('fs')
 const path = require('path')
+const { createClient } = require('@supabase/supabase-js')
 const { subirImagemGithub } = require('./utils')
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
 
 try {
   registerFont(path.join(__dirname, 'fonts', 'DejaVuSans.ttf'), { family: 'DejaVu Sans', weight: 'normal' })
@@ -113,7 +116,26 @@ function parseItens(xml) {
   return itens
 }
 
+// Termos de alta relevância que indicam notícias mais importantes
+const ALTA_RELEVANCIA = [
+  'Champions League', 'Premier League', 'Brasileirão', 'Brasileirao',
+  'Libertadores', 'Copa do Brasil', 'Copa do Mundo', 'La Liga', 'Bundesliga',
+  'Flamengo', 'Palmeiras', 'Corinthians', 'Real Madrid', 'Barcelona',
+  'Manchester City', 'Liverpool', 'Arsenal', 'Bayern'
+]
+
+function pontuarNoticia(titulo, desc) {
+  const texto = (titulo + ' ' + (desc || '')).toLowerCase()
+  let pontos = 0
+  for (const termo of ALTA_RELEVANCIA) {
+    if (texto.includes(termo.toLowerCase())) pontos++
+  }
+  return pontos
+}
+
 async function buscarNoticiaRSS() {
+  const todas = []
+
   for (const feed of FEEDS) {
     try {
       const res = await axios.get(feed.url, {
@@ -121,18 +143,27 @@ async function buscarNoticiaRSS() {
         timeout: 10000
       })
       const itens = parseItens(res.data)
-      const relevante = itens.find(function(it) {
-        return ehRelevante(it.titulo) || ehRelevante(it.desc)
-      })
-      if (relevante) {
-        console.log('Noticia encontrada em ' + feed.nome + ': ' + relevante.titulo.slice(0, 60))
-        return { ...relevante, fonte: feed.nome }
+      for (const it of itens) {
+        if (ehRelevante(it.titulo) || ehRelevante(it.desc)) {
+          todas.push({ ...it, fonte: feed.nome })
+        }
       }
+      console.log('Feed ' + feed.nome + ': ' + itens.length + ' itens, ' + todas.filter(t => t.fonte === feed.nome).length + ' relevantes')
     } catch (e) {
       console.log('Feed ' + feed.nome + ' falhou: ' + e.message)
     }
   }
-  return null
+
+  if (!todas.length) return null
+
+  // Ordena por pontuação de relevância (maior primeiro)
+  todas.sort(function(a, b) {
+    return pontuarNoticia(b.titulo, b.desc) - pontuarNoticia(a.titulo, a.desc)
+  })
+
+  const melhor = todas[0]
+  console.log('Noticia selecionada (' + melhor.fonte + ', pontos=' + pontuarNoticia(melhor.titulo, melhor.desc) + '): ' + melhor.titulo.slice(0, 60))
+  return melhor
 }
 
 // ─── IMAGEM ───────────────────────────────────────────────────────────────────
@@ -550,6 +581,30 @@ async function publicarViaZernio(caption, imageUrl, isStory) {
   }
 }
 
+// ─── DEDUPLICAÇÃO DE NOTÍCIAS ─────────────────────────────────────────────────
+
+function gerarChaveNoticia(noticia) {
+  // Usa os primeiros 80 chars do título como chave única (evita postar a mesma notícia)
+  return 'noticia_' + noticia.titulo.trim().slice(0, 80).replace(/\s+/g, '_').toLowerCase()
+}
+
+async function jaPostadaNoticia(chave) {
+  try {
+    const { data } = await supabase.from('notificados').select('match_id').eq('match_id', chave).limit(1)
+    return !!(data && data.length)
+  } catch (e) {
+    return false
+  }
+}
+
+async function marcarNoticiaPostada(chave) {
+  try {
+    await supabase.from('notificados').insert({ match_id: chave })
+  } catch (e) {
+    console.error('Erro ao marcar noticia postada:', e.message)
+  }
+}
+
 // ─── FUNÇÃO PRINCIPAL ─────────────────────────────────────────────────────────
 
 async function postarNoticia() {
@@ -565,6 +620,14 @@ async function postarNoticia() {
     const noticia = await buscarNoticiaRSS()
     if (!noticia) {
       console.log('Nenhuma noticia recente encontrada — post cancelado')
+      return
+    }
+
+    // Verifica se já foi postada (evita repetição)
+    const chave = gerarChaveNoticia(noticia)
+    const jaPostada = await jaPostadaNoticia(chave)
+    if (jaPostada) {
+      console.log('Noticia ja postada anteriormente — pulando: ' + noticia.titulo.slice(0, 60))
       return
     }
 
@@ -592,8 +655,12 @@ async function postarNoticia() {
     ])
 
     // 5. Publica feed e story
-    if (urlFeed)  await publicarViaZernio(caption, urlFeed,  false)
+    let publicado = false
+    if (urlFeed)  publicado = await publicarViaZernio(caption, urlFeed,  false)
     if (urlStory) await publicarViaZernio('',      urlStory, true)
+
+    // 6. Marca como postada para evitar repetição
+    if (publicado) await marcarNoticiaPostada(chave)
 
   } catch (e) {
     console.error('Erro no post de noticia:', e.message)

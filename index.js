@@ -453,6 +453,10 @@ function gerarTextoResultado(apostas, resultados) {
 // ─── MONITORAMENTO EM TEMPO REAL ───
 
 async function monitorarResultados() {
+  // Só monitora entre 12h e 02h (horário de Brasília) — cobre jogos europeus de início de tarde e noturnos
+  const horaAtual = parseInt(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hour12: false }))
+  if (horaAtual >= 2 && horaAtual < 12) return
+
   if (monitorEmExecucao) {
     console.log('[monitor] Execução anterior ainda em andamento — pulando este tick')
     return
@@ -1107,7 +1111,14 @@ async function runContexto() {
       console.log('Nenhum jogo para post de contexto.')
       return
     }
-    await postarContextoJogo(jogos[0])
+    // Usa top jogos de alta prioridade (1-2) para maior variedade de temas
+    // Rotaciona pelo dia do mês para evitar repetir sempre o mesmo confronto
+    const topJogos = jogos.filter(function(j) { return j.prioridade <= 2 }).slice(0, 6)
+    const pool = topJogos.length >= 2 ? topJogos : jogos.slice(0, 6)
+    const idx = new Date().getDate() % pool.length
+    const jogoEscolhido = pool[idx]
+    console.log('Jogo de contexto escolhido (idx=' + idx + '): ' + jogoEscolhido.timeCasa + ' x ' + jogoEscolhido.timeFora)
+    await postarContextoJogo(jogoEscolhido)
   } catch (err) {
     console.error('Erro no post de contexto:', err.message)
     await enviarAlerta('🔴 <b>runContexto — Erro</b>\n' + err.message)
@@ -1123,7 +1134,15 @@ async function runEducativo(turno) {
       console.log('Nenhum jogo para post educativo.')
       return
     }
-    const jogoDestaque = (turno === 'tarde' && jogos[1]) ? jogos[1] : jogos[0]
+    // Usa top jogos de alta prioridade (1-2) para maior variedade de temas
+    // Manhã e tarde usam índices diferentes para nunca repetir o mesmo jogo no dia
+    const topJogos = jogos.filter(function(j) { return j.prioridade <= 2 }).slice(0, 8)
+    const pool = topJogos.length >= 3 ? topJogos : jogos.slice(0, 8)
+    const base = new Date().getDate()
+    const idxManha = base % pool.length
+    const idxTarde = (base + Math.ceil(pool.length / 2)) % pool.length
+    const jogoDestaque = turno === 'tarde' ? pool[idxTarde] : pool[idxManha]
+    console.log('Jogo educativo (' + turno + ', idx=' + (turno === 'tarde' ? idxTarde : idxManha) + '): ' + jogoDestaque.timeCasa + ' x ' + jogoDestaque.timeFora)
     const h2hData = jogoDestaque ? await buscarH2H(jogoDestaque.matchId) : null
     await postarConteudoEducativo(jogos, h2hData, turno)
   } catch (err) {
