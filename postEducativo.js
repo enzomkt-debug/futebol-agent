@@ -195,7 +195,10 @@ function extrairBloco(texto, campo, proximo) {
 }
 
 function listaJogos(jogos) {
-  return jogos.slice(0, 5).map(function(j) {
+  // Prioriza jogos de alta relevância (prioridade 1-2) para Claude ter contexto mais rico
+  const relevantes = jogos.filter(function(j) { return j.prioridade <= 2 }).slice(0, 8)
+  const pool = relevantes.length >= 3 ? relevantes : jogos.slice(0, 8)
+  return pool.map(function(j) {
     return j.timeCasa + ' x ' + j.timeFora + ' (' + j.liga + ') - ' + j.dataJogo
   }).join('\n')
 }
