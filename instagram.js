@@ -43,9 +43,10 @@ async function pollJob(jobId, maxAttempts = 15, intervalMs = 2000) {
 async function uploadMedia(imageUrl) {
   let res
   try {
+    const imageName = imageUrl.split('/').pop() || 'image.png'
     res = await axios.post(
       `${BASE_URL}/media/from-url`,
-      { media: [{ url: imageUrl, account_ids: [process.env.PUBLER_INSTAGRAM_ACCOUNT_ID] }] },
+      { media: [{ url: imageUrl, name: imageName }], type: 'single', direct_upload: false, in_library: false },
       { headers: publerHeaders(), timeout: 30000 }
     )
   } catch (err) {
