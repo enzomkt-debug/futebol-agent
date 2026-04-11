@@ -15,9 +15,8 @@ try {
 const FONTE = 'DejaVu Sans'
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
-const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
-const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY
+const BASE_URL_PUBLER = 'https://app.publer.com/api/v1'
 const ALERTA_CHAT_ID = '6116204841'
 
 async function enviarAlerta(mensagem) {
@@ -549,34 +548,89 @@ async function gerarCardNoticiaStory(noticia, imgUrl) {
   return caminho
 }
 
-// ─── ZERNIO ───────────────────────────────────────────────────────────────────
+// ─── PUBLER ───────────────────────────────────────────────────────────────────
 
-async function publicarViaZernio(caption, imageUrl, isStory) {
+function publerHeaders() {
+  return {
+    Authorization: `Bearer-API ${process.env.PUBLER_API_KEY}`,
+    'Publer-Workspace-Id': process.env.PUBLER_WORKSPACE_ID,
+    'Content-Type': 'application/json',
+  }
+}
+
+async function pollJob(jobId, maxAttempts = 15, intervalMs = 2000) {
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise(r => setTimeout(r, intervalMs))
+    const { data } = await axios.get(`${BASE_URL_PUBLER}/job_status/${jobId}`, { headers: publerHeaders() })
+    const status = data?.status
+    if (status === 'complete') return data.payload?.[0]
+    if (status === 'failed') throw new Error(`Publer job failed: ${JSON.stringify(data)}`)
+  }
+  throw new Error(`Publer job ${jobId} timed out`)
+}
+
+async function uploadMedia(imageUrl) {
+  let res
+  try {
+    const imageName = imageUrl.split('/').pop() || 'image.png'
+    res = await axios.post(
+      `${BASE_URL_PUBLER}/media/from-url`,
+      { media: [{ url: imageUrl, name: imageName }], type: 'single', direct_upload: false, in_library: false },
+      { headers: publerHeaders(), timeout: 30000 }
+    )
+  } catch (err) {
+    const detail = err.response?.data ? JSON.stringify(err.response.data) : err.message
+    throw new Error(`Publer media upload ${err.response?.status ?? ''}: ${detail}`)
+  }
+  if (res.data?.job_id) {
+    const result = await pollJob(res.data.job_id)
+    const mediaId = result?.id
+    if (!mediaId) throw new Error(`Publer media job sem ID: ${JSON.stringify(result)}`)
+    return mediaId
+  }
+  throw new Error(`Publer media upload resposta inesperada: ${JSON.stringify(res.data)}`)
+}
+
+async function createPost(networks) {
+  let res
+  try {
+    res = await axios.post(
+      `${BASE_URL_PUBLER}/posts/schedule/publish`,
+      {
+        bulk: {
+          state: 'scheduled',
+          posts: [{ networks, accounts: [{ id: process.env.PUBLER_INSTAGRAM_ACCOUNT_ID }] }],
+        },
+      },
+      { headers: publerHeaders(), timeout: 30000 }
+    )
+  } catch (err) {
+    const detail = err.response?.data ? JSON.stringify(err.response.data) : err.message
+    throw new Error(`Publer post ${err.response?.status ?? ''}: ${detail}`)
+  }
+  const jobId = res.data?.job_id
+  if (!jobId) throw new Error(`Publer post sem job_id: ${JSON.stringify(res.data)}`)
+  return jobId
+}
+
+async function publicarViaPubler(caption, imageUrl, isStory) {
   const tipo = isStory ? 'story' : 'feed'
   if (process.env.TEST_MODE === 'true') {
     console.log('[TEST MODE] Publicação bloqueada (' + tipo + ')')
     return true
   }
-  const plataforma = isStory
-    ? { platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID, platformSpecificData: { contentType: 'story' } }
-    : { platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }
   try {
-    await axios.post('https://zernio.com/api/v1/posts', {
-      platforms: [plataforma],
-      content: caption,
-      mediaItems: [{ type: 'image', url: imageUrl }],
-      publishNow: true
-    }, {
-      headers: {
-        'Authorization': 'Bearer ' + ZERNIO_API_KEY,
-        'Content-Type': 'application/json'
-      }
-    })
-    console.log('Noticia publicada no Instagram (' + tipo + ') via Zernio!')
+    console.log('Publicando noticia no Instagram (' + tipo + ') via Publer...')
+    const mediaId = await uploadMedia(imageUrl)
+    const networks = isStory
+      ? { instagram: { type: 'photo', text: '', media: [{ id: mediaId, type: 'image' }], details: { type: 'story' } } }
+      : { instagram: { type: 'photo', text: caption, media: [{ id: mediaId, type: 'image' }] } }
+    await createPost(networks)
+    console.log('Noticia publicada no Instagram (' + tipo + ') via Publer!')
     return true
   } catch (e) {
-    console.error('Erro Zernio (' + tipo + '):', e.response?.data || e.message)
-    await enviarAlerta('🔴 <b>postNoticia — Erro Zernio (' + tipo + ')</b>\n' + (e.response?.data?.message || e.message))
+    console.error('Erro Publer (' + tipo + '):', e.message)
+    await enviarAlerta('🔴 <b>postNoticia — Erro Publer (' + tipo + ')</b>\n' + e.message)
     return false
   }
 }
@@ -610,8 +664,8 @@ async function marcarNoticiaPostada(chave) {
 async function postarNoticia() {
   console.log('\n[' + new Date().toISOString() + '] Post de noticia iniciado')
 
-  if (!ZERNIO_API_KEY || !ZERNIO_ACCOUNT_ID) {
-    console.log('Credenciais Zernio nao configuradas.')
+  if (!process.env.PUBLER_API_KEY || !process.env.PUBLER_INSTAGRAM_ACCOUNT_ID) {
+    console.log('Credenciais Publer nao configuradas.')
     return
   }
 
@@ -656,8 +710,8 @@ async function postarNoticia() {
 
     // 5. Publica feed e story
     let publicado = false
-    if (urlFeed)  publicado = await publicarViaZernio(caption, urlFeed,  false)
-    if (urlStory) await publicarViaZernio('',      urlStory, true)
+    if (urlFeed)  publicado = await publicarViaPubler(caption, urlFeed,  false)
+    if (urlStory) await publicarViaPubler('',      urlStory, true)
 
     // 6. Marca como postada para evitar repetição
     if (publicado) await marcarNoticiaPostada(chave)
