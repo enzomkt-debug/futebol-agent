@@ -4,11 +4,10 @@ const { createCanvas, loadImage, registerFont } = require('canvas')
 const fs = require('fs')
 const path = require('path')
 const { subirImagemGithub } = require('./utils')
+const { publicarFeed, publicarStory, credenciaisOk } = require('./publer')
 const LOGOS = require('./logosMapa')
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
-const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
-const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY
 const ALERTA_CHAT_ID = '6116204841'
 
@@ -985,61 +984,6 @@ async function gerarStory_Formato4(timeCasa, timeFora, metricas) {
   return salvarCard(canvas, 'card-educativo-story.png')
 }
 
-// ─── PUBLICAÇÃO VIA ZERNIO ───
-
-async function publicarViaZernio(caption, imageUrl) {
-  if (process.env.TEST_MODE === 'true') {
-    console.log('[TEST MODE] Publicação bloqueada (feed)')
-    return true
-  }
-  try {
-    await axios.post('https://zernio.com/api/v1/posts', {
-      platforms: [{ platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }],
-      content: caption,
-      mediaItems: [{ type: 'image', url: imageUrl }],
-      publishNow: true
-    }, {
-      headers: {
-        'Authorization': 'Bearer ' + ZERNIO_API_KEY,
-        'Content-Type': 'application/json'
-      }
-    })
-    console.log('Post educativo publicado no Instagram!')
-    return true
-  } catch (err) {
-    console.error('Erro ao publicar:', err.response?.data || err.message)
-    return false
-  }
-}
-
-async function publicarStoryViaZernio(imageUrl) {
-  if (process.env.TEST_MODE === 'true') {
-    console.log('[TEST MODE] Publicação bloqueada (story)')
-    return true
-  }
-  try {
-    await axios.post('https://zernio.com/api/v1/posts', {
-      platforms: [{
-        platform: 'instagram',
-        accountId: ZERNIO_ACCOUNT_ID,
-        platformSpecificData: { contentType: 'story' }
-      }],
-      content: '',
-      mediaItems: [{ type: 'image', url: imageUrl }],
-      publishNow: true
-    }, {
-      headers: {
-        'Authorization': 'Bearer ' + ZERNIO_API_KEY,
-        'Content-Type': 'application/json'
-      }
-    })
-    console.log('Story educativo publicado!')
-    return true
-  } catch (err) {
-    console.error('Erro ao publicar story educativo:', err.response?.data || err.message)
-    return false
-  }
-}
 
 function gerarHashtags(texto) {
   const base = '#futebol #dadosesportivos #analiseesportiva #golmatchbr #estatisticas #futebolanalitico'
@@ -1057,8 +1001,8 @@ async function postarConteudoEducativo(jogos, h2hData, turno) {
     console.log('Nenhum jogo disponivel para post educativo.')
     return
   }
-  if (!ZERNIO_API_KEY || !ZERNIO_ACCOUNT_ID) {
-    console.log('Credenciais do Zernio nao configuradas.')
+  if (!credenciaisOk()) {
+    console.log('Credenciais do Publer nao configuradas — post educativo cancelado.')
     return
   }
   if (!UNSPLASH_ACCESS_KEY) {
@@ -1120,10 +1064,10 @@ async function postarConteudoEducativo(jogos, h2hData, turno) {
     if (!urlFeed) { console.log('Erro: nao foi possivel subir card-educativo.png para o GitHub'); return }
 
     const hashtags = gerarHashtags(texto || '')
-    await publicarViaZernio((texto || '') + '\n\n' + hashtags, urlFeed)
+    await publicarFeed((texto || '') + '\n\n' + hashtags, urlFeed, 'educativo')
 
     const urlStory = await subirImagemGithub(axios, storyPath, 'card-educativo-story.png')
-    if (urlStory) await publicarStoryViaZernio(urlStory)
+    if (urlStory) await publicarStory(urlStory, 'educativo-story')
 
   } catch (err) {
     console.error('Erro no post educativo:', err.message)

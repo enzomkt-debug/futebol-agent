@@ -4,11 +4,10 @@ const path = require('path')
 const fs = require('fs')
 const { createCanvas, loadImage, registerFont } = require('canvas')
 const { subirImagemGithub } = require('./utils')
+const { publicarFeed, credenciaisOk } = require('./publer')
 const LOGOS = require('./logosMapa')
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
-const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
-const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
 const ALERTA_CHAT_ID = '6116204841'
 
 async function enviarAlerta(mensagem) {
@@ -283,32 +282,6 @@ async function gerarImagemContexto(jogo) {
   return caminhoLocal
 }
 
-async function publicarViaZernio(caption, imageUrl) {
-  if (process.env.TEST_MODE === 'true') {
-    console.log('[TEST MODE] Publicação bloqueada (feed)')
-    return true
-  }
-  try {
-    await axios.post('https://zernio.com/api/v1/posts', {
-      platforms: [{ platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }],
-      content: caption,
-      mediaItems: [{ type: 'image', url: imageUrl }],
-      publishNow: true
-    }, {
-      headers: {
-        'Authorization': 'Bearer ' + ZERNIO_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      timeout: 30000
-    })
-    console.log('Post de contexto publicado no Instagram!')
-    return true
-  } catch (err) {
-    console.error('Erro ao publicar contexto:', err.response?.data || err.message)
-    await enviarAlerta('🔴 <b>postContexto — Erro Zernio</b>\n' + (err.response?.data?.message || err.message))
-    return false
-  }
-}
 
 async function postarContextoJogo(jogoDestaque, turno) {
   if (!jogoDestaque) {
@@ -316,8 +289,8 @@ async function postarContextoJogo(jogoDestaque, turno) {
     return
   }
 
-  if (!ZERNIO_API_KEY || !ZERNIO_ACCOUNT_ID) {
-    console.log('Credenciais do Zernio nao configuradas.')
+  if (!credenciaisOk()) {
+    console.log('Credenciais do Publer nao configuradas — post de contexto cancelado.')
     return
   }
 
@@ -337,11 +310,10 @@ async function postarContextoJogo(jogoDestaque, turno) {
 
     const caminhoLocal = await gerarImagemContexto(jogoDestaque)
 
-    // [skip ci] incluído automaticamente via utils.subirImagemGithub
     const imageUrl = await subirImagemGithub(axios, caminhoLocal, 'card-contexto.png')
     if (!imageUrl) return
 
-    await publicarViaZernio(caption, imageUrl)
+    await publicarFeed(caption, imageUrl, 'contexto')
 
   } catch (err) {
     console.error('Erro no post de contexto:', err.message)

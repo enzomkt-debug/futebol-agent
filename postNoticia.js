@@ -15,8 +15,7 @@ try {
 const FONTE = 'DejaVu Sans'
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
-const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY
-const ZERNIO_ACCOUNT_ID = process.env.ZERNIO_ACCOUNT_ID
+const { publicarFeed, publicarStory, credenciaisOk } = require('./publer')
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY
 const ALERTA_CHAT_ID = '6116204841'
 
@@ -549,37 +548,6 @@ async function gerarCardNoticiaStory(noticia, imgUrl) {
   return caminho
 }
 
-// ─── ZERNIO ───────────────────────────────────────────────────────────────────
-
-async function publicarViaZernio(caption, imageUrl, isStory) {
-  const tipo = isStory ? 'story' : 'feed'
-  if (process.env.TEST_MODE === 'true') {
-    console.log('[TEST MODE] Publicação bloqueada (' + tipo + ')')
-    return true
-  }
-  const plataforma = isStory
-    ? { platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID, platformSpecificData: { contentType: 'story' } }
-    : { platform: 'instagram', accountId: ZERNIO_ACCOUNT_ID }
-  try {
-    await axios.post('https://zernio.com/api/v1/posts', {
-      platforms: [plataforma],
-      content: caption,
-      mediaItems: [{ type: 'image', url: imageUrl }],
-      publishNow: true
-    }, {
-      headers: {
-        'Authorization': 'Bearer ' + ZERNIO_API_KEY,
-        'Content-Type': 'application/json'
-      }
-    })
-    console.log('Noticia publicada no Instagram (' + tipo + ') via Zernio!')
-    return true
-  } catch (e) {
-    console.error('Erro Zernio (' + tipo + '):', e.response?.data || e.message)
-    await enviarAlerta('🔴 <b>postNoticia — Erro Zernio (' + tipo + ')</b>\n' + (e.response?.data?.message || e.message))
-    return false
-  }
-}
 
 // ─── DEDUPLICAÇÃO DE NOTÍCIAS ─────────────────────────────────────────────────
 
@@ -610,8 +578,8 @@ async function marcarNoticiaPostada(chave) {
 async function postarNoticia() {
   console.log('\n[' + new Date().toISOString() + '] Post de noticia iniciado')
 
-  if (!ZERNIO_API_KEY || !ZERNIO_ACCOUNT_ID) {
-    console.log('Credenciais Zernio nao configuradas.')
+  if (!credenciaisOk()) {
+    console.log('Credenciais do Publer nao configuradas — post de noticia cancelado.')
     return
   }
 
@@ -656,8 +624,8 @@ async function postarNoticia() {
 
     // 5. Publica feed e story
     let publicado = false
-    if (urlFeed)  publicado = await publicarViaZernio(caption, urlFeed,  false)
-    if (urlStory) await publicarViaZernio('',      urlStory, true)
+    if (urlFeed)  publicado = await publicarFeed(caption, urlFeed, 'noticia')
+    if (urlStory) await publicarStory(urlStory, 'noticia-story')
 
     // 6. Marca como postada para evitar repetição
     if (publicado) await marcarNoticiaPostada(chave)
