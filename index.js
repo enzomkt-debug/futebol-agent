@@ -224,6 +224,29 @@ async function buscarPerformance() {
   }
 }
 
+// ─── VANTAGEM DE JOGAR EM CASA ───
+// Times da casa marcam em média ~10% mais gols que em campo neutro
+const HOME_ADVANTAGE = 1.10
+
+// ─── FATOR DE GOLS POR LIGA ───
+// Corrige o lambda pelo perfil histórico de gols de cada competição
+// Baseline: ~2.7 gols/jogo. Bundesliga ~3.1 → 1.15, Libertadores ~2.4 → 0.90, etc.
+const LEAGUE_GOAL_FACTOR = {
+  2013: 0.95,  // Brasileirão Série A
+  2152: 0.90,  // Copa Libertadores
+  2001: 1.05,  // Champions League
+  2021: 1.04,  // Premier League
+  2014: 0.97,  // La Liga
+  2002: 1.15,  // Bundesliga
+  2019: 0.97,  // Serie A italiana
+  2015: 1.00,  // Ligue 1
+  2016: 1.02,  // Championship
+  2003: 1.10,  // Eredivisie
+  2017: 0.98,  // Primeira Liga
+  2000: 1.00,  // Copa do Mundo
+  2018: 1.00   // Eurocopa
+}
+
 // ─── LIGAS PRIORIZADAS ───
 const LIGAS_PRIORIDADE = {
   2013: { prioridade: 1, nome: 'Brasileirao Serie A' },
@@ -659,7 +682,7 @@ async function buscarStats(timeCasaId, timeForaId, matchId) {
       const finalizados = (matches || [])
         .filter(m => m.status === 'FINISHED')
         .filter(m => comoMandante ? m.homeTeam.id === teamId : m.awayTeam.id === teamId)
-        .slice(0, 6)
+        .slice(0, 8)
       if (!finalizados.length) return { mediaGolsMarcados: 1.2, mediaGolsSofridos: 1.2 }
       let totalMarcados = 0
       let totalSofridos = 0
@@ -703,6 +726,14 @@ function estimarOddsOver(mediaGols) {
   return { over: 2.50, under: 1.55 }
 }
 
+function estimarOddsBTTS(probBTTS) {
+  if (probBTTS >= 0.65) return { bttsYes: 1.50, bttsNo: 2.40 }
+  if (probBTTS >= 0.55) return { bttsYes: 1.65, bttsNo: 2.10 }
+  if (probBTTS >= 0.45) return { bttsYes: 1.85, bttsNo: 1.85 }
+  if (probBTTS >= 0.35) return { bttsYes: 2.10, bttsNo: 1.65 }
+  return { bttsYes: 2.40, bttsNo: 1.50 }
+}
+
 
 // Poisson: probabilidade de exatamente k gols com média lambda
 function poissonProb(lambda, k) {
@@ -711,28 +742,41 @@ function poissonProb(lambda, k) {
   return p
 }
 
-function calcularEdge(stats) {
-  // Dixon-Coles: lambda separado para cada time
-  // lambdaCasa = ataque do time da casa × defesa do time de fora
-  // lambdaFora = ataque do time de fora × defesa do time da casa
-  const lambdaCasa = stats.casa.mediaGolsMarcados * stats.fora.mediaGolsSofridos
+function calcularEdge(stats, ligaId) {
+  const ligaFator = LEAGUE_GOAL_FACTOR[ligaId] || 1.0
+
+  // Dixon-Coles com coeficiente de vantagem de jogar em casa
+  const lambdaCasa = stats.casa.mediaGolsMarcados * stats.fora.mediaGolsSofridos * HOME_ADVANTAGE
   const lambdaFora = stats.fora.mediaGolsMarcados * stats.casa.mediaGolsSofridos
 
-  // Pondera com H2H (30%) para suavizar
-  const lambdaTotal = (lambdaCasa + lambdaFora) * 0.7 + stats.h2h.mediaGols * 0.3
+  // Pondera com H2H (30%) e ajusta pelo perfil histórico de gols da liga
+  const lambdaTotal = ((lambdaCasa + lambdaFora) * 0.7 + stats.h2h.mediaGols * 0.3) * ligaFator
 
-  // Probabilidades over/under 2.5 via Poisson
+  // Probabilidades Over/Under 2.5 via Poisson
   const probUnder25 = poissonProb(lambdaTotal, 0) + poissonProb(lambdaTotal, 1) + poissonProb(lambdaTotal, 2)
   const probOver25 = 1 - probUnder25
 
+  // Probabilidade BTTS via Poisson (independência entre times) suavizada com H2H
+  const probBTTSPoisson = (1 - Math.exp(-lambdaCasa * ligaFator)) * (1 - Math.exp(-lambdaFora * ligaFator))
+  const probBTTS = probBTTSPoisson * 0.7 + stats.h2h.btts * 0.3
+
   const oddsOver = estimarOddsOver(lambdaTotal)
+  const oddsBTTS = estimarOddsBTTS(probBTTS)
   const bets = []
 
+  const EDGE_THRESHOLD = 0.12
+
   const edgeOver = probOver25 - (1 / oddsOver.over)
-  if (edgeOver >= 0.08) bets.push({ mercado: 'Mais de 2.5 gols', odd: oddsOver.over, edge: edgeOver, prob: probOver25 })
+  if (edgeOver >= EDGE_THRESHOLD) bets.push({ mercado: 'Mais de 2.5 gols', odd: oddsOver.over, edge: edgeOver, prob: probOver25 })
 
   const edgeUnder = probUnder25 - (1 / oddsOver.under)
-  if (edgeUnder >= 0.08) bets.push({ mercado: 'Menos de 2.5 gols', odd: oddsOver.under, edge: edgeUnder, prob: probUnder25 })
+  if (edgeUnder >= EDGE_THRESHOLD) bets.push({ mercado: 'Menos de 2.5 gols', odd: oddsOver.under, edge: edgeUnder, prob: probUnder25 })
+
+  const edgeBTTSYes = probBTTS - (1 / oddsBTTS.bttsYes)
+  if (edgeBTTSYes >= EDGE_THRESHOLD) bets.push({ mercado: 'Ambas marcam: SIM', odd: oddsBTTS.bttsYes, edge: edgeBTTSYes, prob: probBTTS })
+
+  const edgeBTTSNo = (1 - probBTTS) - (1 / oddsBTTS.bttsNo)
+  if (edgeBTTSNo >= EDGE_THRESHOLD) bets.push({ mercado: 'Ambas marcam: NAO', odd: oddsBTTS.bttsNo, edge: edgeBTTSNo, prob: 1 - probBTTS })
 
   return bets
 }
@@ -1006,7 +1050,7 @@ async function runAgent(turno) {
       const stats = await buscarStats(jogo.timeCasaId, jogo.timeForaId, jogo.matchId)
       if (!stats) continue
 
-      const bets = calcularEdge(stats)
+      const bets = calcularEdge(stats, jogo.ligaId)
 
       if (bets.length > 0) {
         for (const b of bets) {

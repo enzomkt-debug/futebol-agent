@@ -8,6 +8,7 @@ function verificarAcerto(aposta, resultado) {
   if (aposta.mercado === 'Mais de 2.5 gols') return totalGols > 2
   if (aposta.mercado === 'Menos de 2.5 gols') return totalGols < 3
   if (aposta.mercado === 'Ambas marcam: SIM') return ambasMarcaram
+  if (aposta.mercado === 'Ambas marcam: NAO') return !ambasMarcaram
   console.warn('[verificarAcerto] Mercado desconhecido:', aposta.mercado)
   return null
 }
