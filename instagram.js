@@ -225,9 +225,11 @@ async function postarInstagram(apostasOntem, resultados, turno) {
 
     console.log('Gerando story de resultado...')
     const storyUrl = await gerarESubirStory(apostasOntem || [], resultados || [])
-    if (storyUrl) {
-      await publicarStoryViaPubler(storyUrl)
+    if (!storyUrl) {
+      await enviarAlerta('🔴 <b>Instagram (story) — Falha ao gerar/subir imagem do story</b>\nstoryUrl retornou null (upload GitHub ou geração da imagem falhou)')
+      return true
     }
+    await publicarStoryViaPubler(storyUrl)
 
     return true
 

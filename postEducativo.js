@@ -1067,7 +1067,11 @@ async function postarConteudoEducativo(jogos, h2hData, turno) {
     await publicarFeed((texto || '') + '\n\n' + hashtags, urlFeed, 'educativo')
 
     const urlStory = await subirImagemGithub(axios, storyPath, 'card-educativo-story.png')
-    if (urlStory) await publicarStory(urlStory, 'educativo-story')
+    if (urlStory) {
+      await publicarStory(urlStory, 'educativo-story')
+    } else {
+      await enviarAlerta('🔴 <b>postEducativo (story) — Falha ao subir imagem para o GitHub</b>\ncard-educativo-story.png retornou url null')
+    }
 
   } catch (err) {
     console.error('Erro no post educativo:', err.message)

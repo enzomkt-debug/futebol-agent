@@ -624,8 +624,16 @@ async function postarNoticia() {
 
     // 5. Publica feed e story
     let publicado = false
-    if (urlFeed)  publicado = await publicarFeed(caption, urlFeed, 'noticia')
-    if (urlStory) await publicarStory(urlStory, 'noticia-story')
+    if (urlFeed) {
+      publicado = await publicarFeed(caption, urlFeed, 'noticia')
+    } else {
+      await enviarAlerta('🔴 <b>postNoticia (feed) — Falha ao subir imagem para o GitHub</b>\ncard-noticia.png retornou url null')
+    }
+    if (urlStory) {
+      await publicarStory(urlStory, 'noticia-story')
+    } else {
+      await enviarAlerta('🔴 <b>postNoticia (story) — Falha ao subir imagem para o GitHub</b>\ncard-noticia-story.png retornou url null')
+    }
 
     // 6. Marca como postada para evitar repetição
     if (publicado) await marcarNoticiaPostada(chave)
