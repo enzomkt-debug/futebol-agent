@@ -122,23 +122,75 @@ async function buscarImagemUnsplash(query) {
 
 // ─── LOGOS ───
 
+const ALIASES_LOGO = {
+  'athletico pr':        'Athletico Paranaense',
+  'cap':                 'Athletico Paranaense',
+  'ca paranaense':       'Athletico Paranaense',
+  'atletico paranaense': 'Athletico Paranaense',
+  'atletico mg':         'Atletico Mineiro',
+  'america mg':          'America Mineiro',
+  'botafogo rj':         'Botafogo',
+  'man united':          'Manchester United',
+  'man utd':             'Manchester United',
+  'manchester utd':      'Manchester United',
+  'man city':            'Manchester City',
+  'spurs':               'Tottenham',
+  'tottenham hotspur':   'Tottenham',
+  'wolves':              'Wolverhampton',
+  'atleti':              'Atletico Madrid',
+  'barca':               'Barcelona',
+  'barça':               'Barcelona',
+  'bayern':              'Bayern Munich',
+  'dortmund':            'Borussia Dortmund',
+  'juve':                'Juventus',
+  'inter':               'Inter Milan',
+  'milan':               'AC Milan',
+  'river':               'River Plate',
+  'boca':                'Boca Juniors',
+}
+
+function nomeArquivoLogo(chave) {
+  return chave.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '.png'
+}
+
+function encontrarChaveLogo(nomeFinal) {
+  if (LOGOS[nomeFinal]) return nomeFinal
+  const nome = nomeFinal.toLowerCase()
+  const tokens = nome.split(/\s+/).filter(Boolean)
+  return Object.keys(LOGOS).find(function(k) {
+    const kl = k.toLowerCase()
+    if (kl === nome) return true
+    const ktokens = kl.split(/\s+/)
+    const todosBatem = tokens.length > 0 && tokens.every(function(t) {
+      return ktokens.some(function(kt) { return kt === t || kt.startsWith(t) })
+    })
+    if (todosBatem) return true
+    return kl.includes(nome) || nome.includes(kl)
+  }) || null
+}
+
 async function buscarLogoTime(nomeTime) {
   if (!nomeTime) return null
+  const alias = ALIASES_LOGO[nomeTime.toLowerCase()]
+  const nomeFinal = alias || nomeTime
+  const chave = encontrarChaveLogo(nomeFinal)
+  if (!chave) {
+    console.log('[logo] chave nao encontrada para "' + nomeTime + '"')
+    return null
+  }
+  const url = LOGOS[chave]
   try {
-    // Busca exata
-    let url = LOGOS[nomeTime]
-    // Match parcial: "SC Internacional" bate em "Internacional"
-    if (!url) {
-      const nome = nomeTime.toLowerCase()
-      const chave = Object.keys(LOGOS).find(function(k) {
-        const kl = k.toLowerCase()
-        return kl.includes(nome) || nome.includes(kl)
-      })
-      if (chave) url = LOGOS[chave]
-    }
-    if (!url) return null
     return await loadImage(url)
-  } catch (e) {
+  } catch (remoteErr) {
+    const localPath = path.join(__dirname, 'assets', 'logos', nomeArquivoLogo(chave))
+    if (fs.existsSync(localPath)) {
+      console.log('[logo] remoto falhou para "' + nomeTime + '" — usando fallback local')
+      try { return await loadImage(localPath) } catch (e) {
+        console.log('[logo] fallback local tambem falhou para "' + nomeTime + '": ' + e.message)
+        return null
+      }
+    }
+    console.log('[logo] falha remota sem fallback local para "' + nomeTime + '": ' + remoteErr.message)
     return null
   }
 }
@@ -204,6 +256,27 @@ function listaJogos(jogos) {
 
 // ─── TEXTOS POR FORMATO ───
 
+// Encontra o jogo cujos nomes completos batem com os nomes curtos retornados
+// pelo Claude (para recuperar os nomes completos p/ busca do escudo).
+function inferirJogoEscolhido(jogos, timeCasaCurto, timeForaCurto) {
+  if (!jogos || !jogos.length) return null
+  function bate(curto, full) {
+    if (!curto || !full) return false
+    const c = String(curto).toLowerCase().trim()
+    const f = String(full).toLowerCase().trim()
+    if (!c || !f) return false
+    if (c === f || f.startsWith(c) || c.startsWith(f) || f.includes(c) || c.includes(f)) return true
+    const ctokens = c.split(/\s+/).filter(Boolean)
+    const ftokens = f.split(/\s+/).filter(Boolean)
+    return ctokens.length > 0 && ctokens.every(function(t) {
+      return ftokens.some(function(kt) { return kt === t || kt.startsWith(t) || t.startsWith(kt) })
+    })
+  }
+  return jogos.find(function(j) {
+    return bate(timeCasaCurto, j.timeCasa) && bate(timeForaCurto, j.timeFora)
+  }) || jogos[0]
+}
+
 async function gerarTextoFormato1(jogos, h2hData, turno) {
   const turnoLabel = turno === 'tarde' ? 'tarde' : 'manha'
   const resposta = await chamarClaude(
@@ -261,10 +334,15 @@ async function gerarTextoFormato3(jogos, h2hData, turno) {
     'TEXTO: [legenda Instagram 5 linhas, suspense sem responder, termine com "A resposta esta no grupo do Telegram. Link na bio."]\n' +
     'QUERY_IMAGEM: [3 palavras ingles para foto estadio brasileiro lotado]'
   )
+  const tCasa3 = extrairCampo(resposta, 'TIME_CASA')
+  const tFora3 = extrairCampo(resposta, 'TIME_FORA')
+  const jogoEsc3 = inferirJogoEscolhido(jogos, tCasa3, tFora3)
   return {
     pergunta: extrairCampo(resposta, 'PERGUNTA') || 'E se o historico se repetir hoje?',
-    timeCasa: extrairCampo(resposta, 'TIME_CASA') || (jogos[0] && jogos[0].timeCasa.split(' ')[0]) || 'Casa',
-    timeFora: extrairCampo(resposta, 'TIME_FORA') || (jogos[0] && jogos[0].timeFora.split(' ')[0]) || 'Fora',
+    timeCasa: tCasa3 || (jogos[0] && jogos[0].timeCasa.split(' ')[0]) || 'Casa',
+    timeFora: tFora3 || (jogos[0] && jogos[0].timeFora.split(' ')[0]) || 'Fora',
+    timeCasaFull: (jogoEsc3 && jogoEsc3.timeCasa) || null,
+    timeForaFull: (jogoEsc3 && jogoEsc3.timeFora) || null,
     confronto: extrairCampo(resposta, 'CONFRONTO'),
     texto: extrairBloco(resposta, 'TEXTO', 'QUERY_IMAGEM'),
     query: extrairCampo(resposta, 'QUERY_IMAGEM') || 'soccer brazil stadium'
@@ -292,9 +370,14 @@ async function gerarTextoFormato4(jogos, h2hData, turno) {
     'M3_FORA: [valor time fora]\n' +
     'TEXTO: [legenda Instagram 4 linhas, analitico, termine com "Analise completa no Telegram. Link na bio."]'
   )
+  const tCasa4 = extrairCampo(resposta, 'TIME_CASA')
+  const tFora4 = extrairCampo(resposta, 'TIME_FORA')
+  const jogoEsc4 = inferirJogoEscolhido(jogos, tCasa4, tFora4)
   return {
-    timeCasa: extrairCampo(resposta, 'TIME_CASA') || 'Casa',
-    timeFora: extrairCampo(resposta, 'TIME_FORA') || 'Fora',
+    timeCasa: tCasa4 || 'Casa',
+    timeFora: tFora4 || 'Fora',
+    timeCasaFull: (jogoEsc4 && jogoEsc4.timeCasa) || null,
+    timeForaFull: (jogoEsc4 && jogoEsc4.timeFora) || null,
     confronto: extrairCampo(resposta, 'CONFRONTO'),
     metricas: [
       { nome: extrairCampo(resposta, 'M1_NOME'), casa: extrairCampo(resposta, 'M1_CASA'), fora: extrairCampo(resposta, 'M1_FORA') },
@@ -571,7 +654,7 @@ async function gerarStory_Formato2(numero, descricao, confronto) {
 // FORMATO 3 — "E SE..." — FEED 1080x1080
 // ═══════════════════════════════════════════
 
-async function gerarFeed_Formato3(pergunta, timeCasa, timeFora, confronto, imagemUrl) {
+async function gerarFeed_Formato3(pergunta, timeCasa, timeFora, confronto, imagemUrl, timeCasaFull, timeForaFull) {
   const W = 1080, H = 1080
   const canvas = createCanvas(W, H)
   const ctx = canvas.getContext('2d')
@@ -581,9 +664,10 @@ async function gerarFeed_Formato3(pergunta, timeCasa, timeFora, confronto, image
   ctx.fillRect(0, 0, W, H)
 
   // Carrega escudos em paralelo (nunca quebra se falhar)
+  // Usa nome completo para busca do escudo (timeCasa/timeFora sao curtos p/ display)
   const [logoCasa, logoFora] = await Promise.all([
-    buscarLogoTime(timeCasa),
-    buscarLogoTime(timeFora)
+    buscarLogoTime(timeCasaFull || timeCasa),
+    buscarLogoTime(timeForaFull || timeFora)
   ])
 
   ctx.textAlign = 'center'
@@ -656,7 +740,7 @@ async function gerarFeed_Formato3(pergunta, timeCasa, timeFora, confronto, image
 // FORMATO 3 — "E SE..." — STORY 1080x1920
 // ════════════════════════════════════════════
 
-async function gerarStory_Formato3(pergunta, timeCasa, timeFora, confronto, imagemUrl) {
+async function gerarStory_Formato3(pergunta, timeCasa, timeFora, confronto, imagemUrl, timeCasaFull, timeForaFull) {
   const W = 1080, H = 1920
   const canvas = createCanvas(W, H)
   const ctx = canvas.getContext('2d')
@@ -672,8 +756,8 @@ async function gerarStory_Formato3(pergunta, timeCasa, timeFora, confronto, imag
 
   // Carrega escudos em paralelo (nunca quebra se falhar)
   const [logoCasa, logoFora] = await Promise.all([
-    buscarLogoTime(timeCasa),
-    buscarLogoTime(timeFora)
+    buscarLogoTime(timeCasaFull || timeCasa),
+    buscarLogoTime(timeForaFull || timeFora)
   ])
 
   ctx.textAlign = 'center'
@@ -747,7 +831,7 @@ async function gerarStory_Formato3(pergunta, timeCasa, timeFora, confronto, imag
 // FORMATO 4 — "RAIO-X" — FEED 1080x1080
 // ═══════════════════════════════════════════
 
-async function gerarFeed_Formato4(timeCasa, timeFora, metricas) {
+async function gerarFeed_Formato4(timeCasa, timeFora, metricas, timeCasaFull, timeForaFull) {
   const W = 1080, H = 1080
   const canvas = createCanvas(W, H)
   const ctx = canvas.getContext('2d')
@@ -769,8 +853,8 @@ async function gerarFeed_Formato4(timeCasa, timeFora, metricas) {
 
   // Carrega logos em paralelo
   const [logoCasa4f, logoFora4f] = await Promise.all([
-    buscarLogoTime(timeCasa),
-    buscarLogoTime(timeFora)
+    buscarLogoTime(timeCasaFull || timeCasa),
+    buscarLogoTime(timeForaFull || timeFora)
   ])
 
   // Times — cabeçalho colunas (logos 60x60, centro y=158)
@@ -866,7 +950,7 @@ async function gerarFeed_Formato4(timeCasa, timeFora, metricas) {
 // FORMATO 4 — "RAIO-X" — STORY 1080x1920
 // ════════════════════════════════════════════
 
-async function gerarStory_Formato4(timeCasa, timeFora, metricas) {
+async function gerarStory_Formato4(timeCasa, timeFora, metricas, timeCasaFull, timeForaFull) {
   const W = 1080, H = 1920
   const canvas = createCanvas(W, H)
   const ctx = canvas.getContext('2d')
@@ -887,8 +971,8 @@ async function gerarStory_Formato4(timeCasa, timeFora, metricas) {
 
   // Carrega logos em paralelo
   const [logoCasa4s, logoFora4s] = await Promise.all([
-    buscarLogoTime(timeCasa),
-    buscarLogoTime(timeFora)
+    buscarLogoTime(timeCasaFull || timeCasa),
+    buscarLogoTime(timeForaFull || timeFora)
   ])
 
   // Times — cabeçalho colunas (logos 80x80, centro y=233)
@@ -1048,15 +1132,15 @@ async function postarConteudoEducativo(jogos, h2hData, turno) {
       const d = await gerarTextoFormato3(jogosOrdenados, h2hData, turno)
       if (!d.pergunta) { console.log('Erro: Claude nao retornou PERGUNTA valida (Formato 3)'); return }
       const img = await buscarImagemUnsplash(d.query)
-      feedPath = await gerarFeed_Formato3(d.pergunta, d.timeCasa, d.timeFora, d.confronto, img)
-      storyPath = await gerarStory_Formato3(d.pergunta, d.timeCasa, d.timeFora, d.confronto, img)
+      feedPath = await gerarFeed_Formato3(d.pergunta, d.timeCasa, d.timeFora, d.confronto, img, d.timeCasaFull, d.timeForaFull)
+      storyPath = await gerarStory_Formato3(d.pergunta, d.timeCasa, d.timeFora, d.confronto, img, d.timeCasaFull, d.timeForaFull)
       texto = d.texto
 
     } else {
       const d = await gerarTextoFormato4(jogosOrdenados, h2hData, turno)
       if (!d.timeCasa) { console.log('Erro: Claude nao retornou TIME_CASA valido (Formato 4)'); return }
-      feedPath = await gerarFeed_Formato4(d.timeCasa, d.timeFora, d.metricas)
-      storyPath = await gerarStory_Formato4(d.timeCasa, d.timeFora, d.metricas)
+      feedPath = await gerarFeed_Formato4(d.timeCasa, d.timeFora, d.metricas, d.timeCasaFull, d.timeForaFull)
+      storyPath = await gerarStory_Formato4(d.timeCasa, d.timeFora, d.metricas, d.timeCasaFull, d.timeForaFull)
       texto = d.texto
     }
 

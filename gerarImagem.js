@@ -21,25 +21,70 @@ const ALIASES = {
   'cap':                 'Athletico Paranaense',
   'ca paranaense':       'Athletico Paranaense',
   'atletico paranaense': 'Athletico Paranaense',
+  'atletico mg':         'Atletico Mineiro',
+  'america mg':          'America Mineiro',
+  'botafogo rj':         'Botafogo',
+  'man united':          'Manchester United',
+  'man utd':             'Manchester United',
+  'manchester utd':      'Manchester United',
+  'man city':            'Manchester City',
+  'spurs':               'Tottenham',
+  'tottenham hotspur':   'Tottenham',
+  'wolves':              'Wolverhampton',
+  'atleti':              'Atletico Madrid',
+  'barca':               'Barcelona',
+  'barça':               'Barcelona',
+  'bayern':              'Bayern Munich',
+  'dortmund':            'Borussia Dortmund',
+  'juve':                'Juventus',
+  'inter':               'Inter Milan',
+  'milan':               'AC Milan',
+  'river':               'River Plate',
+  'boca':                'Boca Juniors',
+}
+
+function nomeArquivoLogo(chave) {
+  return chave.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '.png'
+}
+
+function encontrarChaveLogo(nomeFinal) {
+  if (LOGOS[nomeFinal]) return nomeFinal
+  const nome = nomeFinal.toLowerCase()
+  const tokens = nome.split(/\s+/).filter(Boolean)
+  return Object.keys(LOGOS).find(function(k) {
+    const kl = k.toLowerCase()
+    if (kl === nome) return true
+    const ktokens = kl.split(/\s+/)
+    const todosBatem = tokens.length > 0 && tokens.every(function(t) {
+      return ktokens.some(function(kt) { return kt === t || kt.startsWith(t) })
+    })
+    if (todosBatem) return true
+    return kl.includes(nome) || nome.includes(kl)
+  }) || null
 }
 
 async function buscarLogoTime(nomeTime) {
   if (!nomeTime) return null
+  const alias = ALIASES[nomeTime.toLowerCase()]
+  const nomeFinal = alias || nomeTime
+  const chave = encontrarChaveLogo(nomeFinal)
+  if (!chave) {
+    console.log('[logo] chave nao encontrada para "' + nomeTime + '"')
+    return null
+  }
+  const url = LOGOS[chave]
   try {
-    const alias = ALIASES[nomeTime.toLowerCase()]
-    const nomeFinal = alias || nomeTime
-    let url = LOGOS[nomeFinal]
-    if (!url) {
-      const nome = nomeFinal.toLowerCase()
-      const chave = Object.keys(LOGOS).find(function(k) {
-        const kl = k.toLowerCase()
-        return kl.includes(nome) || nome.includes(kl)
-      })
-      if (chave) url = LOGOS[chave]
-    }
-    if (!url) return null
     return await loadImage(url)
-  } catch (e) {
+  } catch (remoteErr) {
+    const localPath = path.join(__dirname, 'assets', 'logos', nomeArquivoLogo(chave))
+    if (fs.existsSync(localPath)) {
+      console.log('[logo] remoto falhou para "' + nomeTime + '" — usando fallback local')
+      try { return await loadImage(localPath) } catch (e) {
+        console.log('[logo] fallback local tambem falhou para "' + nomeTime + '": ' + e.message)
+        return null
+      }
+    }
+    console.log('[logo] falha remota sem fallback local para "' + nomeTime + '": ' + remoteErr.message)
     return null
   }
 }
